@@ -1,0 +1,7 @@
+# Cloudflare Pages configuration
+name = "indiaclayoven"
+
+[env.production]
+routes = [
+  { pattern = "indiaclayoven.pages.dev", zone_name = "pages.dev" }
+]
