@@ -12,7 +12,7 @@ import { restaurant as seedRestaurant } from "@/lib/data/restaurant";
  * This is what makes the prototype demonstrable: mark a dish sold out in the
  * dashboard and it is sold out on the menu; place an order on the site and it
  * lands on the owner's Orders screen. A production build would swap this for
- * the API layer — the component contracts would not change.
+ * the API layer. The component contracts would not change.
  *
  * Seed data renders on the server; anything the owner changed is restored from
  * localStorage after hydration.

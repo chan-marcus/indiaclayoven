@@ -22,7 +22,7 @@ export function Logo({
     <Link
       href="/"
       className={`group inline-flex items-center gap-2.5 ${className}`}
-      aria-label={`${restaurant.name} — home`}
+      aria-label={`${restaurant.name} home`}
     >
       <OvenMark
         className={`h-[2.1rem] w-[2.1rem] shrink-0 ${mark} transition-opacity duration-300 group-hover:opacity-80`}

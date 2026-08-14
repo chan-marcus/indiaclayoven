@@ -24,7 +24,7 @@ export default function ReservationsPage() {
             <h2 className="display-md text-balance">An evening on Clement Street</h2>
             <p className="mt-5 text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
               The dining room is quiet enough to talk in and the full bar is open through dinner.
-              Larger parties are welcome — we will put tables together.
+              Larger parties are welcome. We will put tables together.
             </p>
 
             <dl className="mt-10 space-y-6 border-t border-cream-200 pt-8 text-[0.9375rem]">
@@ -45,7 +45,7 @@ export default function ReservationsPage() {
                 <dd className="mt-1.5 leading-relaxed">
                   {restaurant.hours.buffet}
                   <br />
-                  <span className="text-ink-500">No reservation needed — walk in.</span>
+                  <span className="text-ink-500">No reservation needed. Walk in.</span>
                 </dd>
               </div>
               <div>

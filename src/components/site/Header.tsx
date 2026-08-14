@@ -33,7 +33,7 @@ export function Header() {
   }, []);
 
   // Close the mobile drawer on every navigation.
-  // (The Framer prototype left it open — this is the fix.)
+  // (The Framer prototype left it open. This is the fix.)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileOpen(false);

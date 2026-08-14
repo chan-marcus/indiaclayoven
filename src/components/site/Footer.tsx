@@ -91,7 +91,7 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Map strip — address stays visible near the footer */}
+      {/* Map strip: address stays visible near the footer */}
       <div className="border-t border-cream/12">
         <a
           href={mapsUrl}
@@ -100,7 +100,7 @@ export function Footer() {
           className="group container-page flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between"
         >
           <span className="text-sm text-cream/70">
-            We are on Clement between 25th and 26th Avenue — a short walk from Golden Gate Park.
+            We are on Clement between 25th and 26th Avenue, a short walk from Golden Gate Park.
           </span>
           <span className="inline-flex items-center gap-2 text-[0.8125rem] font-medium whitespace-nowrap text-gold-bright">
             Open in Google Maps

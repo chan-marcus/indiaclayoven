@@ -3,7 +3,7 @@ import type { Order } from "@/lib/types";
 /**
  * The placed order is handed from checkout to the confirmation page through
  * sessionStorage. A real build would POST the order and redirect to
- * /order/<id> — this keeps the flow identical without a backend.
+ * /order/<id>. This keeps the flow identical without a backend.
  */
 const KEY = "ico.lastOrder.v1";
 const COUNTER_KEY = "ico.orderNumber.v1";

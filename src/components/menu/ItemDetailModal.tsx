@@ -139,7 +139,7 @@ export function ItemDetailModal({
               <div className="rounded-sm border border-cream-300 bg-cream-100 p-4">
                 <p className="text-[0.9375rem] font-medium">Sold out for today</p>
                 <p className="mt-1 text-sm text-ink-500">
-                  This dish is off the menu right now. Everything else is available — check back
+                  This dish is off the menu right now. Everything else is available. Check back
                   tomorrow.
                 </p>
               </div>

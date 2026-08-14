@@ -39,7 +39,7 @@ export function Confirmation() {
 
   const when =
     order.timing === "asap"
-      ? `As soon as possible — around ${timeOfDay(order.requestedFor)}`
+      ? `As soon as possible, around ${timeOfDay(order.requestedFor)}`
       : dayAndTime(order.requestedFor);
 
   return (
@@ -163,7 +163,7 @@ export function Confirmation() {
         <div className="mt-8 rounded-sm border border-cream-200 bg-cream-100/60 p-6">
           <h2 className="font-display text-lg">Questions about your order?</h2>
           <p className="mt-1.5 text-sm text-ink-500">
-            Call us and quote order #{order.number} — we will pull it up.
+            Call us and quote order #{order.number} and we will pull it up.
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <a href={telHref} className="btn btn-primary btn-sm">

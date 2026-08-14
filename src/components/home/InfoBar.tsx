@@ -99,7 +99,7 @@ export function WaysToOrder() {
     },
     {
       title: "Parties & Catering",
-      copy: "Birthdays, engagements, rehearsals and corporate events — here or at your venue.",
+      copy: "Birthdays, engagements, rehearsals and corporate events. Here or at your venue.",
       href: "/catering",
       cta: "Make an enquiry",
     },

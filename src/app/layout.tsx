@@ -21,13 +21,13 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: `${restaurant.name} — ${restaurant.tagline} | Clement Street, San Francisco`,
+    default: `${restaurant.name} | ${restaurant.tagline}, Clement Street, San Francisco`,
     template: `%s | ${restaurant.name}`,
   },
   description:
     "Charcoal-fired clay oven cooking, hand-rolled breads and slow-simmered curries on Clement Street in San Francisco's Richmond District. Order online for pickup or delivery.",
   openGraph: {
-    title: `${restaurant.name} — ${restaurant.tagline}`,
+    title: `${restaurant.name} | ${restaurant.tagline}`,
     description: `${restaurant.cuisine}. ${fullAddress}.`,
     type: "website",
   },

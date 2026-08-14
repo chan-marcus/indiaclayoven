@@ -59,7 +59,7 @@ export function MenuBrowser() {
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
         if (visible[0]) setActiveCategory(visible[0].target.id);
       },
-      // Band just below the sticky header — whichever section crosses it wins.
+      // Band just below the sticky header. Whichever section crosses it wins.
       { rootMargin: "-30% 0px -62% 0px", threshold: 0 },
     );
     Object.values(sectionRefs.current).forEach((el) => el && observer.observe(el));
@@ -153,7 +153,7 @@ export function MenuBrowser() {
                 })}
               </nav>
 
-              {/* Desktop cart summary — always reachable while browsing */}
+              {/* Desktop cart summary, always reachable while browsing */}
               {count > 0 && (
                 <button
                   type="button"
@@ -184,7 +184,7 @@ export function MenuBrowser() {
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search the menu — biryani, paneer, vindaloo…"
+                placeholder="Search the menu: biryani, paneer, vindaloo…"
                 aria-label="Search the menu"
                 className="field-input pl-11"
               />
@@ -383,7 +383,7 @@ export function DietaryNote() {
         <IconLeaf className="mt-0.5 h-[1.125rem] w-[1.125rem] shrink-0 text-gold" />
         <p className="text-[0.875rem] leading-relaxed text-ink-700">
           <span className="font-medium">Dietary options:</span> we can prepare most dishes gluten
-          free, vegan or dairy free — add a note to your item or at checkout and the kitchen will
+          free, vegan or dairy free. Add a note to your item or at checkout and the kitchen will
           take care of it.
         </p>
       </div>

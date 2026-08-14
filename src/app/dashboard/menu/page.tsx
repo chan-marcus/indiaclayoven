@@ -89,7 +89,7 @@ export default function MenuManagerPage() {
         </select>
       </div>
 
-      {/* The table — deliberately spreadsheet-plain */}
+      {/* The table, deliberately spreadsheet-plain */}
       <div className="mt-5 overflow-hidden rounded-sm border border-cream-300 bg-white">
         <div className="hidden grid-cols-[3.5rem_1fr_9rem_6rem_7rem_5rem] items-center gap-4 border-b border-cream-200 bg-cream-100/60 px-4 py-2.5 text-[0.6875rem] font-medium tracking-[0.12em] text-ink-400 uppercase lg:grid">
           <span />

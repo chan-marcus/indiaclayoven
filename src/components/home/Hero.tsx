@@ -14,7 +14,7 @@ export function Hero() {
         className="object-cover object-center"
       />
 
-      {/* Legibility scrim — weighted to the bottom-left where the type sits */}
+      {/* Legibility scrim, weighted to the bottom-left where the type sits */}
       <div
         className="absolute inset-0 bg-gradient-to-t from-clay-dark/92 via-clay-dark/45 to-clay-dark/15"
         aria-hidden
@@ -35,7 +35,7 @@ export function Hero() {
           </h1>
 
           <p className="mt-6 max-w-lg text-[1.0625rem] leading-relaxed text-pretty text-cream/80">
-            Charcoal-fired clay oven cooking, hand-rolled breads and slow-simmered curries —
+            Charcoal-fired clay oven cooking, hand-rolled breads and slow-simmered curries,
             served in the Richmond District since the neighbourhood learned our name.
           </p>
 

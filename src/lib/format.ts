@@ -13,7 +13,7 @@ export const dayAndTime = (iso: string) =>
     minute: "2-digit",
   });
 
-/** "12 minutes ago" — keeps the orders dashboard feeling live. */
+/** "12 minutes ago". Keeps the orders dashboard feeling live. */
 export const relativeTime = (iso: string) => {
   const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   if (mins < 1) return "just now";

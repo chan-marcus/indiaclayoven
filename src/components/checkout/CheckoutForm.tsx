@@ -353,7 +353,7 @@ export function CheckoutForm() {
 
               <p className="mt-4 flex items-start gap-2 border-t border-cream-200 pt-4 text-xs leading-relaxed text-ink-500">
                 <IconLock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                This is an approval prototype — no card is charged and no details are stored or
+                This is an approval prototype. No card is charged and no details are stored or
                 sent anywhere.
               </p>
             </div>

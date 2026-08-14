@@ -7,7 +7,7 @@ import { IconArrowRight } from "@/components/ui/icons";
 
 /**
  * Each card is a single link into the menu with ?item=<id>, which opens that
- * dish's detail modal on arrival — one tap from "that looks good" to ordering.
+ * dish's detail modal on arrival: one tap from "that looks good" to ordering.
  */
 export function SignatureDishes() {
   const dishes = getSignatureDishes();

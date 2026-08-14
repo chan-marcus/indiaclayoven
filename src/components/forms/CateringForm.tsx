@@ -55,7 +55,7 @@ export function CateringForm() {
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/12 text-success">
           <IconCheck className="h-7 w-7" />
         </span>
-        <h2 className="display-md mt-6">Thank you — we will be in touch</h2>
+        <h2 className="display-md mt-6">Thank you. We will be in touch</h2>
         <p className="mx-auto mt-4 max-w-md text-[0.9375rem] leading-relaxed text-ink-500">
           We have your enquiry for {form.guests} guests
           {form.date

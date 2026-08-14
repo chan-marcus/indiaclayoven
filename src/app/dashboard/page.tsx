@@ -49,7 +49,7 @@ export default function OverviewPage() {
             {faxTrouble.map((o) => (
               <div key={o.id} className="rounded-sm border border-cream-300 bg-white p-4">
                 <p className="mb-2.5 text-[0.9375rem] font-medium">
-                  Order #{o.number} — {o.customer.name}
+                  Order #{o.number} · {o.customer.name}
                 </p>
                 <FaxStatus order={o} />
               </div>
@@ -92,7 +92,7 @@ export default function OverviewPage() {
       <div className="mt-9 rounded-sm border border-cream-300 bg-white p-6">
         <h2 className="font-display text-xl">You can run this yourself</h2>
         <p className="mt-2 max-w-2xl text-[0.9375rem] leading-relaxed text-ink-500">
-          Change a price, mark tonight&apos;s special sold out, or add a dish — it goes live on your
+          Change a price, mark tonight&apos;s special sold out, or add a dish. It goes live on your
           website straight away. No developer, no waiting.
         </p>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row">

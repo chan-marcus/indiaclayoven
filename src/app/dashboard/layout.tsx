@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 /** Data comes from <RestaurantDataProvider> in the root layout, which the
- *  customer site shares — so menu edits here show up there immediately. */
+ *  customer site shares, so menu edits here show up there immediately. */
 export default function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
   return (
     <div className="flex min-h-full flex-col bg-cream-100/50">

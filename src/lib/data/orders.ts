@@ -55,7 +55,7 @@ export const seedOrders: Order[] = [
     deliveryFee: 4.99,
     total: 63.38,
     status: "in_progress",
-    fax: { status: "failed", detail: "Line busy — 2 attempts", attempts: 2 },
+    fax: { status: "failed", detail: "Line busy, 2 attempts", attempts: 2 },
   },
   {
     id: "ord_1046",
@@ -77,7 +77,7 @@ export const seedOrders: Order[] = [
     total: 61.7,
     status: "ready",
     fax: { status: "sent", detail: "Sent 1:58 PM", attempts: 1 },
-    notes: "Birthday — please include candles if you can.",
+    notes: "Birthday. Please include candles if you can.",
   },
   {
     id: "ord_1045",

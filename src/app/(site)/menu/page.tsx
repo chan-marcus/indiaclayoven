@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/site/PageHeader";
 export const metadata: Metadata = {
   title: "Menu & Order Online",
   description:
-    "Browse the full India Clay Oven menu — tandoori specialties, curries, biryanis and clay oven breads. Order online for pickup or delivery.",
+    "Browse the full India Clay Oven menu: tandoori specialties, curries, biryanis and clay oven breads. Order online for pickup or delivery.",
 };
 
 export default function MenuPage() {

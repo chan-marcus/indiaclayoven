@@ -205,7 +205,7 @@ export default function SettingsPage() {
           {saved && (
             <span className="inline-flex animate-fade-in items-center gap-2 text-[0.875rem] text-success">
               <IconCheck className="h-4 w-4" />
-              Saved — your website is updated
+              Saved. Your website is updated
             </span>
           )}
         </div>

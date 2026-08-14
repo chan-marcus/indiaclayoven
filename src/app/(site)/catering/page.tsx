@@ -5,7 +5,7 @@ import { CateringForm } from "@/components/forms/CateringForm";
 export const metadata: Metadata = {
   title: "Catering & Parties",
   description:
-    "Birthdays, weddings, rehearsal dinners and corporate events — hosted at India Clay Oven on Clement Street or catered at your venue.",
+    "Birthdays, weddings, rehearsal dinners and corporate events. Hosted at India Clay Oven on Clement Street or catered at your venue.",
 };
 
 const HIGHLIGHTS = [
@@ -29,7 +29,7 @@ export default function CateringPage() {
       <PageHeader
         eyebrow="Catering & Parties"
         title="Feed everyone properly"
-        intro="Birthdays, engagements, rehearsals and corporate events — here on Clement Street or wherever you are."
+        intro="Birthdays, engagements, rehearsals and corporate events. Here on Clement Street or wherever you are."
         image="/images/clay-oven-platter.jpg"
         alt="A platter of assorted clay oven meats"
       />

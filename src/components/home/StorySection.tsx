@@ -8,7 +8,7 @@ const BLOCKS = [
     alt: "Bread baking against the wall of a charcoal-fired tandoor",
     kicker: "Heritage",
     title: "The oven never went electric",
-    copy: "Our tandoor runs on charcoal from open to close — the same way this food has been cooked for centuries.",
+    copy: "Our tandoor runs on charcoal from open to close, the same way this food has been cooked for centuries.",
   },
   {
     image: "/images/spices-flatlay.jpg",

@@ -32,7 +32,7 @@ export interface Restaurant {
     buffet: string;
     detail: { days: string; time: string }[];
   };
-  /** Simulated fax delivery settings — see the Fax concept in the dashboard. */
+  /** Simulated fax delivery settings. See the Fax concept in the dashboard. */
   fax: {
     enabled: boolean;
     number: string;

@@ -97,7 +97,7 @@ interface CartValue {
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  /** Bumps whenever something is added — drives the header cart nudge. */
+  /** Bumps whenever something is added. Drives the header cart nudge. */
   pulse: number;
   addItem: (item: MenuItem, quantity?: number, notes?: string) => void;
   setQuantity: (lineId: string, quantity: number) => void;

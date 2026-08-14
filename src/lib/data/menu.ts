@@ -98,7 +98,7 @@ export const menuItems: MenuItem[] = [
     desc: "Marinated clay oven roasted lamb chops",
   }),
   item("appetizers", "Assorted Clay Oven Meat Platter", 22.95, "clay-oven-platter", {
-    desc: "A grand selection of our clay oven specialties — kababs, tikka and chops from the charcoal fire",
+    desc: "A grand selection of our clay oven specialties: kababs, tikka and chops from the charcoal fire",
     badges: ["signature"],
     signature: true,
   }),
@@ -187,7 +187,7 @@ export const menuItems: MenuItem[] = [
     badges: ["spicy"],
   }),
   item("chicken", "Chicken Tikka Masala", 20.95, "chicken-tikka-masala", {
-    desc: "Clay-oven roasted chicken in a velvety tomato cream sauce — the one everybody orders",
+    desc: "Clay-oven roasted chicken in a velvety tomato cream sauce, the one everybody orders",
     badges: ["signature"],
     signature: true,
   }),
@@ -241,7 +241,7 @@ export const menuItems: MenuItem[] = [
     desc: "Minced lamb on skewer with ginger and cilantro",
   }),
   item("clay-oven", "Tandoori Mixed Grill", 29.95, "tandoori-closeup", {
-    desc: "The chef's selection from the charcoal fire — tandoori chicken, seekh kabab, boti kabab and prawns on one sizzling platter",
+    desc: "The chef's selection from the charcoal fire: tandoori chicken, seekh kabab, boti kabab and prawns on one sizzling platter",
     badges: ["signature"],
     signature: true,
   }),
@@ -286,7 +286,7 @@ export const menuItems: MenuItem[] = [
 
   /* --- Dinners --------------------------------------------------------- */
   item("dinners", "Clay Oven Thali Dinner for Two", 59.95, "thali-silver", {
-    desc: "A grand feast for two — two entrees, dal, rice, fresh nan, raita and dessert. The best way to eat your way across the menu in one sitting.",
+    desc: "A grand feast for two: two entrees, dal, rice, fresh nan, raita and dessert. The best way to eat your way across the menu in one sitting.",
     badges: ["signature"],
   }),
 
@@ -314,7 +314,7 @@ export const menuItems: MenuItem[] = [
 ];
 
 /* ------------------------------------------------------------------ */
-/* Selectors — the shape a data layer would expose                     */
+/* Selectors: the shape a data layer would expose                     */
 /* ------------------------------------------------------------------ */
 
 export const getCategories = () => [...categories].sort((a, b) => a.sort - b.sort);
@@ -328,7 +328,7 @@ export const getSignatureDishes = () => menuItems.filter((i) => i.signature);
 
 export const getCategoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "";
 
-/** Photography used by the homepage gallery — the food doing the selling. */
+/** Photography used by the homepage gallery, the food doing the selling. */
 export const galleryImages: { src: string; alt: string; wide?: boolean }[] = [
   { src: "/images/tandoori-closeup.jpg", alt: "Tandoori chicken charred over charcoal", wide: true },
   { src: "/images/lamb-biryani.jpg", alt: "Lamb biryani layered with basmati and mint" },

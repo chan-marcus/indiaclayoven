@@ -1,5 +1,5 @@
 /**
- * Simple line icons — deliberately used in place of emoji.
+ * Simple line icons, deliberately used in place of emoji.
  * All inherit currentColor and a 1.5px stroke for a consistent weight.
  */
 

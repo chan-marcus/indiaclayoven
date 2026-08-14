@@ -8,7 +8,7 @@ import { IconArrowRight } from "@/components/ui/icons";
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "A neighbourhood clay oven on Clement Street. The story behind India Clay Oven — charcoal tandoor cooking, house-ground spices and the Richmond District.",
+    "A neighbourhood clay oven on Clement Street. The story behind India Clay Oven: charcoal tandoor cooking, house-ground spices and the Richmond District.",
 };
 
 export default function AboutPage() {
@@ -39,13 +39,13 @@ export default function AboutPage() {
               kitchen rather than bought by the case.
             </p>
             <p>
-              At lunch the room fills for the daily buffet — a rotating spread of vegetarian
+              At lunch the room fills for the daily buffet, a rotating spread of vegetarian
               dishes, chicken, rice, raita and fresh nan. In the evening the full dinner menu comes
               out, along with the bar. Regulars bring their families; first-timers usually come
               back.
             </p>
             <p className="text-ink-500">
-              Any dish on the menu can be prepared gluten free, vegan or dairy free — just tell us
+              Any dish on the menu can be prepared gluten free, vegan or dairy free. Just tell us
               when you order.
             </p>
           </div>
@@ -63,7 +63,7 @@ export default function AboutPage() {
         />
       </section>
 
-      {/* Philosophy — editorial pairs, not cards */}
+      {/* Philosophy: editorial pairs, not cards */}
       <section className="section">
         <div className="container-page max-w-4xl">
           <div className="grid gap-14 md:gap-20">
