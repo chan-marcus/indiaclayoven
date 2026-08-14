@@ -1,26 +1,298 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================
+   India Clay Oven — Design System
+   Warm cream, deep charcoal, muted ochre accent.
+   Restrained radii, borders over shadows, editorial type.
+   ============================================================ */
+
+@theme {
+  /* --- Colour ------------------------------------------------ */
+  /* Warm neutrals */
+  --color-cream: #fbf7f1;
+  --color-cream-100: #f6efe4;
+  --color-cream-200: #ece2d3;
+  --color-cream-300: #ddcfbb;
+
+  /* Warm near-black / charcoal */
+  --color-ink: #1a1512;
+  --color-ink-700: #3a312b;
+  --color-ink-500: #6b5f56;
+  --color-ink-400: #8b7d72;
+
+  /* Deep clay maroon — the brand's dark surface */
+  --color-clay: #6b2318;
+  --color-clay-dark: #4d1810;
+  --color-clay-light: #86382a;
+
+  /* Muted gold / ochre — accent only, never dominant */
+  --color-gold: #b4832f;
+  --color-gold-bright: #d9b36c;
+  --color-gold-soft: #eadcc0;
+
+  /* Earth support */
+  --color-earth: #8a6a4b;
+
+  /* Status */
+  --color-success: #476b45;
+  --color-danger: #a33a28;
+
+  /* --- Type -------------------------------------------------- */
+  --font-display: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* --- Radius (restrained) ----------------------------------- */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+
+  /* --- Easing ------------------------------------------------ */
+  --ease-out-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* menu category jumps clear the sticky header */
+    scroll-padding-top: 7rem;
   }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    color: var(--color-ink);
+  }
+
+  ::selection {
+    background-color: var(--color-gold-soft);
+    color: var(--color-ink);
+  }
+
+  /* Consistent, on-brand focus ring */
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  input, select, textarea, button { font-family: inherit; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* --- Eyebrow / small caps label ---------------------------- */
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-gold);
+  }
+  .eyebrow-on-dark { color: var(--color-gold-bright); }
+
+  /* A short gold rule used beside eyebrows (replaces emoji icons) */
+  .eyebrow-rule::before {
+    content: "";
+    display: inline-block;
+    width: 2.25rem;
+    height: 1px;
+    margin-right: 0.875rem;
+    vertical-align: 0.28em;
+    background-color: currentColor;
+    opacity: 0.55;
+  }
+
+  /* --- Display headings -------------------------------------- */
+  .display-xl {
+    font-family: var(--font-display);
+    font-size: clamp(2.75rem, 7vw, 5.25rem);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+  }
+  .display-lg {
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 4.6vw, 3.5rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+  }
+  .display-md {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+  }
+
+  /* --- Layout ------------------------------------------------- */
+  .container-page {
+    width: 100%;
+    max-width: 82rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 768px) {
+    .container-page { padding-inline: 2.5rem; }
+  }
+  .section {
+    padding-block: clamp(3.5rem, 8vw, 7rem);
+  }
+
+  /* --- Buttons ------------------------------------------------ */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-xs);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 0.8125rem 1.5rem;
+    min-height: 2.875rem;
+    transition: background-color 0.22s var(--ease-out-soft),
+                color 0.22s var(--ease-out-soft),
+                border-color 0.22s var(--ease-out-soft),
+                transform 0.22s var(--ease-out-soft),
+                opacity 0.22s var(--ease-out-soft);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Primary: deep clay. Confident without going yellow. */
+  .btn-primary {
+    background-color: var(--color-clay);
+    color: var(--color-cream);
+  }
+  .btn-primary:hover:not(:disabled) { background-color: var(--color-clay-dark); }
+
+  /* Secondary: hairline outline */
+  .btn-secondary {
+    background-color: transparent;
+    color: var(--color-ink);
+    border: 1px solid color-mix(in srgb, var(--color-ink) 28%, transparent);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-ink);
+    background-color: color-mix(in srgb, var(--color-ink) 4%, transparent);
+  }
+
+  /* On dark clay surfaces the accent carries the CTA */
+  .btn-gold {
+    background-color: var(--color-gold-bright);
+    color: var(--color-clay-dark);
+  }
+  .btn-gold:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-gold-bright) 84%, white);
+  }
+  .btn-ghost-light {
+    background-color: transparent;
+    color: var(--color-cream);
+    border: 1px solid color-mix(in srgb, var(--color-cream) 42%, transparent);
+  }
+  .btn-ghost-light:hover:not(:disabled) {
+    border-color: var(--color-cream);
+    background-color: color-mix(in srgb, var(--color-cream) 10%, transparent);
+  }
+
+  .btn-sm { padding: 0.5rem 0.9375rem; min-height: 2.25rem; font-size: 0.8125rem; }
+  .btn-block { width: 100%; }
+
+  /* --- Form controls ------------------------------------------ */
+  .field-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink-500);
+    margin-bottom: 0.4375rem;
+  }
+  .field-input {
+    width: 100%;
+    background-color: white;
+    border: 1px solid var(--color-cream-300);
+    border-radius: var(--radius-xs);
+    padding: 0.75rem 0.875rem;
+    font-size: 0.9375rem;
+    color: var(--color-ink);
+    min-height: 2.875rem;
+    transition: border-color 0.18s var(--ease-out-soft);
+  }
+  .field-input::placeholder { color: var(--color-ink-400); }
+  .field-input:hover { border-color: var(--color-earth); }
+  .field-input:focus {
+    border-color: var(--color-gold);
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 16%, transparent);
+  }
+  textarea.field-input { min-height: 6rem; resize: vertical; }
+
+  /* --- Surfaces (borders, not shadows) ------------------------ */
+  .surface {
+    background-color: white;
+    border: 1px solid var(--color-cream-200);
+    border-radius: var(--radius-sm);
+  }
+
+  /* --- Hairline divider --------------------------------------- */
+  .hairline { border-top: 1px solid var(--color-cream-200); }
+
+  /* --- Image treatments ---------------------------------------- */
+  .img-zoom {
+    transition: transform 0.7s var(--ease-out-soft);
+    will-change: transform;
+  }
+  .group:hover .img-zoom { transform: scale(1.045); }
+
+  /* --- Scrollbar for the food gallery -------------------------- */
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+
+  /* Entrance animation, used sparingly */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .animate-rise { animation: rise 0.5s var(--ease-out-soft) both; }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .animate-fade-in { animation: fade-in 0.2s var(--ease-out-soft) both; }
+
+  @keyframes slide-up {
+    from { transform: translateY(100%); }
+    to   { transform: none; }
+  }
+  .animate-slide-up { animation: slide-up 0.3s var(--ease-out-soft) both; }
+
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to   { transform: none; }
+  }
+  .animate-slide-in-right { animation: slide-in-right 0.3s var(--ease-out-soft) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
