@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { restaurant, mapsUrl, telHref } from "@/lib/data/restaurant";
+import { restaurant, mapsUrl, mapsEmbedUrl, telHref } from "@/lib/data/restaurant";
 import { IconArrowRight } from "@/components/ui/icons";
 
 export function FindUs() {
@@ -8,12 +8,12 @@ export function FindUs() {
     <section className="section">
       <div className="container-page grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
         <div className="relative aspect-[5/4] overflow-hidden rounded-sm bg-cream-200 lg:aspect-[4/3]">
-          <Image
-            src="/images/restaurant-interior.jpg"
-            alt="The dining room at India Clay Oven"
-            fill
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover"
+          <iframe
+            src={mapsEmbedUrl}
+            title={`Map to ${restaurant.name}`}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            className="absolute inset-0 h-full w-full grayscale-[15%]"
           />
         </div>
 

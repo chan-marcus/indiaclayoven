@@ -48,7 +48,9 @@ export function InfoBar() {
                 <p className="mt-1.5 text-[0.9375rem] leading-snug font-medium text-ink">
                   {c.lines[0]}
                 </p>
-                <p className="mt-0.5 text-[0.8125rem] leading-snug text-ink-500">{c.lines[1]}</p>
+                <p className="mt-0.5 text-[0.8125rem] leading-snug text-pretty text-ink-500">
+                  {c.lines[1]}
+                </p>
               </div>
             </div>
           );

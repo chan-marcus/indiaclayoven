@@ -47,4 +47,8 @@ export const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encode
   `${restaurant.name}, ${fullAddress}`,
 )}`;
 
+export const mapsEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(
+  `${restaurant.name}, ${fullAddress}`,
+)}&output=embed`;
+
 export const telHref = `tel:${restaurant.phone.replace(/[^\d+]/g, "")}`;

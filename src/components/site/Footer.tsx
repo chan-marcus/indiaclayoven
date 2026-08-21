@@ -40,7 +40,7 @@ export function Footer() {
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="group mt-5 inline-flex items-center gap-2 text-[0.8125rem] font-medium text-gold-bright transition-colors hover:text-cream"
+            className="group mt-5 flex w-fit items-center gap-2 text-[0.8125rem] font-medium text-gold-bright transition-colors hover:text-cream"
           >
             Get directions
             <IconArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
