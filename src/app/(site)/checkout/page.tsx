@@ -13,7 +13,7 @@ export default function CheckoutPage() {
       <PageHeader
         eyebrow="Checkout"
         title="Almost there"
-        intro="Tell us where to send it and when you would like it."
+        intro="Tell us where to send your order and when you want it."
       />
       <CheckoutForm />
     </>

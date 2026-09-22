@@ -8,7 +8,7 @@ const BLOCKS = [
     alt: "Bread baking against the wall of a charcoal-fired tandoor",
     kicker: "Heritage",
     title: "The oven never went electric",
-    copy: "Our tandoor runs on charcoal from open to close, the same way this food has been cooked for centuries.",
+    copy: "Our tandoor runs on charcoal from open to close, cooked the same way for centuries now.",
   },
   {
     image: "/images/spices-flatlay.jpg",
@@ -22,7 +22,7 @@ const BLOCKS = [
     alt: "A table being served in the dining room",
     kicker: "Hospitality",
     title: "Regulars bring their families",
-    copy: "At lunch the room fills for the buffet. In the evening the full menu comes out, along with the bar. First-timers usually come back.",
+    copy: "At lunch the room fills for the buffet. In the evening the full menu comes out, along with the bar, and first-timers usually come back.",
   },
 ];
 
@@ -46,8 +46,9 @@ export function StorySection() {
               kitchen.
             </p>
             <p className="text-ink-500">
-              Come in for the lunch buffet, sit down for dinner with a drink from the full bar, or
-              take it home. Every dish can be made gluten free, vegan or dairy free on request.
+              Come in for the lunch buffet, stay for dinner with a drink from the full bar, or
+              take it home to enjoy later. Gluten free, vegan and dairy free dishes are available
+              whenever you ask for them.
             </p>
             <Link
               href="/about"

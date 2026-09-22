@@ -29,7 +29,7 @@ export function InfoBar() {
     {
       icon: IconLeaf,
       label: "Kitchen",
-      lines: [restaurant.cuisine, "Gluten free, vegan & dairy free on request"],
+      lines: [restaurant.cuisine, "Ask for gluten, dairy free or vegan"],
     },
   ];
 
@@ -100,8 +100,8 @@ export function WaysToOrder() {
       cta: "Reserve a table",
     },
     {
-      title: "Parties & Catering",
-      copy: "Birthdays, engagements, rehearsals and corporate events. Here or at your venue.",
+      title: "Catering",
+      copy: "Birthdays, engagements and corporate parties, hosted here or at your venue.",
       href: "/catering",
       cta: "Make an enquiry",
     },

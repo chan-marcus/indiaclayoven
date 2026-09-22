@@ -24,7 +24,7 @@ export function FindUs() {
           </h2>
           <p className="mt-5 max-w-md text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
             We are on Clement between 25th and 26th Avenue, a short walk from Golden Gate Park.
-            Street parking is easiest before six.
+            Parking on the street is easiest before six each evening.
           </p>
 
           <dl className="mt-9 space-y-5 border-t border-cream-200 pt-8">

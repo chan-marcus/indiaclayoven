@@ -98,7 +98,7 @@ export const menuItems: MenuItem[] = [
     desc: "Marinated clay oven roasted lamb chops",
   }),
   item("appetizers", "Assorted Clay Oven Meat Platter", 22.95, "clay-oven-platter", {
-    desc: "A grand selection of our clay oven specialties: kababs, tikka and chops from the charcoal fire",
+    desc: "A grand selection of our clay oven specialties, kababs, tikka and chops straight from the fire",
     badges: ["signature"],
     signature: true,
   }),
@@ -187,7 +187,7 @@ export const menuItems: MenuItem[] = [
     badges: ["spicy"],
   }),
   item("chicken", "Chicken Tikka Masala", 20.95, "chicken-tikka-masala", {
-    desc: "Clay-oven roasted chicken in a velvety tomato cream sauce, the one everybody orders",
+    desc: "Clay-oven roasted chicken simmered in a velvety tomato cream sauce, the one everybody orders twice",
     badges: ["signature"],
     signature: true,
   }),
@@ -213,7 +213,7 @@ export const menuItems: MenuItem[] = [
     desc: "Aromatic dum-cooked rice with tender chicken",
   }),
   item("rice", "Lamb Biryani", 23.95, "lamb-biryani", {
-    desc: "Royal-style basmati layered with slow-cooked lamb, sealed and finished over low fire",
+    desc: "Royal-style basmati layered with slow-cooked lamb, sealed shut and finished slowly over the fire",
     badges: ["signature"],
     signature: true,
   }),

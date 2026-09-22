@@ -116,14 +116,12 @@ export function Confirmation() {
             </h2>
             <ul className="mt-4 divide-y divide-cream-200">
               {order.items.map((i, idx) => (
-                <li key={`${i.itemId}-${idx}`} className="flex justify-between gap-4 py-3">
-                  <div>
-                    <p className="text-[0.9375rem]">
-                      <span className="text-ink-500 tabular-nums">{i.quantity}×</span> {i.name}
-                    </p>
-                    {i.notes && <p className="mt-0.5 text-xs text-ink-500 italic">“{i.notes}”</p>}
-                  </div>
-                  <p className="text-[0.9375rem] tabular-nums">
+                <li key={`${i.itemId}-${idx}`} className="py-3">
+                  <p className="text-[0.9375rem]">
+                    <span className="text-ink-500 tabular-nums">{i.quantity}×</span> {i.name}
+                  </p>
+                  {i.notes && <p className="mt-0.5 text-xs text-ink-500 italic">“{i.notes}”</p>}
+                  <p className="mt-0.5 text-xs tabular-nums text-ink-500">
                     {currency(i.price * i.quantity)}
                   </p>
                 </li>

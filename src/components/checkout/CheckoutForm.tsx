@@ -380,8 +380,10 @@ export function CheckoutForm() {
                     {l.notes && (
                       <p className="mt-0.5 text-xs text-ink-500 italic">“{l.notes}”</p>
                     )}
+                    <p className="mt-0.5 text-xs tabular-nums text-ink-500">
+                      {currency(l.price * l.quantity)}
+                    </p>
                   </div>
-                  <p className="text-sm tabular-nums">{currency(l.price * l.quantity)}</p>
                 </li>
               ))}
             </ul>

@@ -70,6 +70,13 @@
     font-weight: 400;
     letter-spacing: -0.015em;
     color: var(--color-ink);
+    text-wrap: balance;
+  }
+
+  /* Backstop only: reworded copy should already come out close to even.
+     Firefox ignores `pretty`, and `balance` stops after a few lines. */
+  p, li, figcaption, dd {
+    text-wrap: pretty;
   }
 
   ::selection {

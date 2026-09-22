@@ -19,7 +19,7 @@ const HIGHLIGHTS = [
   },
   {
     title: "Built around your menu",
-    copy: "Pick from the full menu or let us put together a spread. Vegetarian, vegan, gluten free and dairy free are never an afterthought.",
+    copy: "Pick from the full menu or let us put together a spread. Vegetarian, vegan, gluten-free and dairy-free are always covered.",
   },
 ];
 
@@ -28,7 +28,7 @@ export default function CateringPage() {
     <>
       <PageHeader
         eyebrow="Catering & Parties"
-        title="Feed everyone properly"
+        title="Feed everyone well"
         intro="Birthdays, engagements, rehearsals and corporate events. Here on Clement Street or wherever you are."
         image="/images/clay-oven-platter.jpg"
         alt="A platter of assorted clay oven meats"

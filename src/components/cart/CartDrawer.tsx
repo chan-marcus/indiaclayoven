@@ -85,12 +85,10 @@ export function CartDrawer() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-[0.9375rem] leading-snug font-medium">{line.name}</p>
-                      <p className="text-[0.9375rem] font-medium tabular-nums">
-                        {currency(line.price * line.quantity)}
-                      </p>
-                    </div>
+                    <p className="text-[0.9375rem] leading-snug font-medium">{line.name}</p>
+                    <p className="mt-0.5 text-xs tabular-nums text-ink-500">
+                      {currency(line.price * line.quantity)}
+                    </p>
 
                     {line.notes && (
                       <p className="mt-1 text-xs leading-relaxed text-ink-500 italic">
