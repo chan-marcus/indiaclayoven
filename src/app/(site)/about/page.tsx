@@ -45,8 +45,7 @@ export default function AboutPage() {
               back.
             </p>
             <p className="text-ink-500">
-              Any dish on the menu can be prepared gluten free, vegan or dairy free. Just tell us
-              when you order.
+              Ask and we will make any dish gluten free, vegan or dairy free.
             </p>
           </div>
         </div>
