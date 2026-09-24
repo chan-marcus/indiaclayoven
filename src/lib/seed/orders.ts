@@ -1,9 +1,9 @@
 import type { Order } from "@/lib/types";
-import { RESTAURANT_ID } from "./restaurant";
+import { RESTAURANT_ID } from "@/lib/restaurant";
 
 /**
  * Seeded orders for the owner dashboard.
- * Times are relative to page load so the board always looks like a live service.
+ * Times are relative to when the seed script runs.
  */
 const minsAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 const minsAhead = (m: number) => new Date(Date.now() + m * 60_000).toISOString();

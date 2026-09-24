@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { restaurant, telHref } from "@/lib/data/restaurant";
+import { telHref } from "@/lib/restaurant";
+import { useRestaurantData } from "@/lib/restaurant-data";
 import { IconCheck, IconPhone } from "@/components/ui/icons";
 
 const EVENT_TYPES = [
@@ -15,6 +16,7 @@ const EVENT_TYPES = [
 ];
 
 export function CateringForm() {
+  const { settings: restaurant } = useRestaurantData();
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -67,7 +69,7 @@ export function CateringForm() {
             : ""}
           . One of us will reply to {form.email} within a day, usually sooner.
         </p>
-        <a href={telHref} className="btn btn-secondary btn-sm mt-7">
+        <a href={telHref(restaurant)} className="btn btn-secondary btn-sm mt-7">
           <IconPhone className="h-4 w-4" />
           Or call {restaurant.phone}
         </a>
@@ -147,7 +149,7 @@ export function CateringForm() {
 
       <p className="mt-4 text-center text-xs text-ink-400">
         We usually reply the same day. In a hurry? Call{" "}
-        <a href={telHref} className="text-gold underline-offset-4 hover:underline">
+        <a href={telHref(restaurant)} className="text-gold underline-offset-4 hover:underline">
           {restaurant.phone}
         </a>
         .

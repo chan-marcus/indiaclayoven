@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/site/PageHeader";
 import { ReservationForm } from "@/components/forms/ReservationForm";
-import { restaurant, telHref } from "@/lib/data/restaurant";
+import { telHref } from "@/lib/restaurant";
+import { getRestaurant } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "Reservations",
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
     "Book a table at India Clay Oven on Clement Street, San Francisco. Dinner served seven nights a week.",
 };
 
-export default function ReservationsPage() {
+export default async function ReservationsPage() {
+  const restaurant = await getRestaurant();
   return (
     <>
       <PageHeader
@@ -54,7 +56,7 @@ export default function ReservationsPage() {
                 </dt>
                 <dd className="mt-1.5 leading-relaxed">
                   For nine or more, call{" "}
-                  <a href={telHref} className="text-gold underline-offset-4 hover:underline">
+                  <a href={telHref(restaurant)} className="text-gold underline-offset-4 hover:underline">
                     {restaurant.phone}
                   </a>{" "}
                   and we will arrange the room.

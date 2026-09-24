@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useDashboard } from "@/lib/restaurant-data";
+import { useDashboard } from "@/lib/dashboard-data";
+import { reportFailure } from "@/lib/restaurant-data";
 import { IconCheck, IconMail } from "@/components/ui/icons";
 
 export default function SettingsPage() {
@@ -23,16 +24,21 @@ export default function SettingsPage() {
     ownerEmail: settings.owner.email,
   });
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateSettings({
-      name: form.name,
-      phone: form.phone,
-      address: { ...settings.address, street: form.street, city: form.city, state: form.state, zip: form.zip },
-      hours: { ...settings.hours, summary: form.hours, buffet: form.buffet },
-      orderEmail: { enabled: form.emailEnabled, address: form.emailAddress },
-      owner: { name: form.ownerName, email: form.ownerEmail },
-    });
+    try {
+      await updateSettings({
+        name: form.name,
+        phone: form.phone,
+        address: { ...settings.address, street: form.street, city: form.city, state: form.state, zip: form.zip },
+        hours: { ...settings.hours, summary: form.hours, buffet: form.buffet },
+        orderEmail: { enabled: form.emailEnabled, address: form.emailAddress },
+        owner: { name: form.ownerName, email: form.ownerEmail },
+      });
+    } catch (err) {
+      reportFailure("save your settings", err);
+      return;
+    }
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2600);
   };

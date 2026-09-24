@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { OvenMark } from "@/components/site/OvenMark";
-import { restaurant } from "@/lib/data/restaurant";
+import { useRestaurantData } from "@/lib/restaurant-data";
 import { IconGrid, IconReceipt, IconSettings, IconArrowRight } from "@/components/ui/icons";
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
 ];
 
 export function DashboardNav() {
+  const { settings: restaurant } = useRestaurantData();
   const pathname = usePathname();
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);

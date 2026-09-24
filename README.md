@@ -3,13 +3,32 @@
 A high-fidelity **customer-approval prototype** for India Clay Oven Restaurant & Bar,
 2436 Clement Street, San Francisco.
 
-It is a working front end, not the production application: no real payments,
-authentication or email. Everything else — browsing, ordering, checkout, the owner
-dashboard — behaves for real.
+Menu, restaurant details and orders are stored in **Supabase**. There are no real
+payments, owner login or email sending yet. Everything else — browsing, ordering,
+checkout, the owner dashboard — behaves for real.
 
 ```bash
 npm install
 npm run dev     # http://localhost:3000
+```
+
+### Environment
+
+Create `.env.local` (gitignored) with the project's values, and add the first two to
+Vercel → Project Settings → Environment Variables:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_…
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…   # for owner login, later
+SUPABASE_DB_URL=postgresql://…pooler.supabase.com:5432/postgres  # local only, for migrations
+```
+
+### Database
+
+```bash
+supabase db push --db-url "$SUPABASE_DB_URL"   # apply supabase/migrations
+npm run db:seed                                # load the starting menu + demo orders (once)
 ```
 
 ---
@@ -34,8 +53,8 @@ order-email status beside it.
 `/menu`: it is greyed out, labelled **Sold Out**, and cannot be added to the cart.
 That is the core pitch — *"I can change my menu myself."*
 
-Both surfaces read from one store, so changes persist in the browser. To wipe it and
-return to the seeded state, clear the site's local storage.
+Both surfaces read from the same database, so a change made on one device shows up
+on every other device.
 
 ---
 
@@ -65,14 +84,24 @@ src/
   components/         ui · site · home · menu · cart · checkout · forms · dashboard
   lib/
     types.ts          Restaurant → Categories → MenuItems; Orders → OrderItems
-    data/             the real menu (12 categories, ~100 dishes), seeded orders
-    restaurant-data.tsx   shared store behind BOTH surfaces
-    cart-context.tsx      cart, persisted to localStorage
+    db.ts             reads from Supabase (server only)
+    restaurant-data.tsx   menu + settings shared by BOTH surfaces
+    dashboard-data.tsx    orders, loaded only inside /dashboard
+    cart-context.tsx      cart, kept in the visitor's browser
+    seed/             starting data: the real menu (12 categories, ~100 dishes), demo orders
+  app/actions.ts      every database write (server actions)
+supabase/migrations/  database schema
+scripts/seed.ts       loads lib/seed into an empty database
 ```
 
-Every record carries a `restaurantId` and no component hard-codes the restaurant, so
-the multi-tenant model in the brief drops in later. `restaurant-data.tsx` is the seam:
-replace its state with API calls and the components are unchanged.
+All database access runs on the server with the secret key. Row-level security is
+on with no policies, so the publishable key in the browser can read nothing.
+Orders, which hold customer contact details, only ever load on `/dashboard`.
+
+**Security gap until owner login is built:** `/dashboard` and its server actions are
+open to anyone with the link — they can edit the menu and see customer orders. Add
+Supabase Auth and check the session at the top of each owner action in
+`app/actions.ts`.
 
 ## Content
 
@@ -85,7 +114,7 @@ launch; the file names describe the dish, so it is a like-for-like swap.
 
 ## Not built (by design)
 
-Real Stripe payments · order email delivery · authentication · reservation
+Real Stripe payments · order email delivery · owner login · reservation
 integration · analytics · multi-restaurant admin. The brief excludes all of these
 from the prototype. Order email is shown as a delivery status and a **Resend Email** control
 in the dashboard, which is what the owner needs to understand.

@@ -1,5 +1,5 @@
 import type { Category, MenuItem, BadgeKind } from "@/lib/types";
-import { RESTAURANT_ID } from "./restaurant";
+import { RESTAURANT_ID } from "@/lib/restaurant";
 
 const img = (n: string) => `/images/${n}.jpg`;
 
@@ -15,7 +15,7 @@ const cat = (id: string, name: string, sort: number, note?: string): Category =>
   sort,
 });
 
-export const categories: Category[] = [
+export const seedCategories: Category[] = [
   cat("appetizers", "Appetizers", 1, "Served with homemade mint chutney and hot 'n sour tamarind chutney."),
   cat("soups-salads", "Soups, Salads & Sides", 2),
   cat("breads", "Breads", 3, "Slapped against the wall of the clay oven and baked to order."),
@@ -62,7 +62,7 @@ const item = (
   sort: ++seq,
 });
 
-export const menuItems: MenuItem[] = [
+export const seedMenuItems: MenuItem[] = [
   /* --- Appetizers ------------------------------------------------- */
   item("appetizers", "Papadams", 4.95, "papadam-leaf", {
     desc: "Crispy lentil wafers served with chutneys",
@@ -311,32 +311,4 @@ export const menuItems: MenuItem[] = [
   item("beverages", "Sodas", 3.5, "chai", {}),
   item("beverages", "Lemonade", 3.95, "mango-lassi", {}),
   item("beverages", "Pellegrino Water", 4.95, "chai", {}),
-];
-
-/* ------------------------------------------------------------------ */
-/* Selectors: the shape a data layer would expose                     */
-/* ------------------------------------------------------------------ */
-
-export const getCategories = () => [...categories].sort((a, b) => a.sort - b.sort);
-
-export const getItemsByCategory = (categoryId: string) =>
-  menuItems.filter((i) => i.categoryId === categoryId).sort((a, b) => a.sort - b.sort);
-
-export const getItem = (id: string) => menuItems.find((i) => i.id === id);
-
-export const getSignatureDishes = () => menuItems.filter((i) => i.signature);
-
-export const getCategoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "";
-
-/** Photography used by the homepage gallery, the food doing the selling. */
-export const galleryImages: { src: string; alt: string; wide?: boolean }[] = [
-  { src: "/images/tandoori-closeup.jpg", alt: "Tandoori chicken charred over charcoal", wide: true },
-  { src: "/images/lamb-biryani.jpg", alt: "Lamb biryani layered with basmati and mint" },
-  { src: "/images/tandoor-fire.jpg", alt: "Nan baking against the wall of the charcoal tandoor" },
-  { src: "/images/curry-spread.jpg", alt: "A spread of curries with rice and raita", wide: true },
-  { src: "/images/paneer-tikka-skewers.jpg", alt: "Paneer tikka skewers on a sizzling platter" },
-  { src: "/images/thali-silver.jpg", alt: "Thali with dal, chutneys and rice" },
-  { src: "/images/papadam-thali.jpg", alt: "Papadams served with curries", wide: true },
-  { src: "/images/sag-paneer.jpg", alt: "Sag paneer, spinach with house-made cheese" },
-  { src: "/images/clay-oven-platter.jpg", alt: "Assorted clay oven meats" },
 ];

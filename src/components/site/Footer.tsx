@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
-import { restaurant, mapsUrl, telHref } from "@/lib/data/restaurant";
+import { mapsUrl, telHref } from "@/lib/restaurant";
+import { getRestaurant } from "@/lib/db";
 import { IconArrowRight } from "@/components/ui/icons";
 
-export function Footer() {
+export async function Footer() {
+  const restaurant = await getRestaurant();
   return (
     <footer className="mt-auto bg-clay-dark text-cream">
       <div className="container-page grid gap-12 py-16 md:grid-cols-2 md:py-20 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
@@ -31,13 +33,13 @@ export function Footer() {
             <p className="text-cream/50">{restaurant.address.line2}</p>
           </address>
           <a
-            href={telHref}
+            href={telHref(restaurant)}
             className="mt-3 inline-block text-sm text-cream/75 underline-offset-4 transition-colors hover:text-gold-bright hover:underline"
           >
             {restaurant.phone}
           </a>
           <a
-            href={mapsUrl}
+            href={mapsUrl(restaurant)}
             target="_blank"
             rel="noopener noreferrer"
             className="group mt-5 flex w-fit items-center gap-2 text-[0.8125rem] font-medium text-gold-bright transition-colors hover:text-cream"
@@ -94,7 +96,7 @@ export function Footer() {
       {/* Map strip: address stays visible near the footer */}
       <div className="border-t border-cream/12">
         <a
-          href={mapsUrl}
+          href={mapsUrl(restaurant)}
           target="_blank"
           rel="noopener noreferrer"
           className="group container-page flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between"

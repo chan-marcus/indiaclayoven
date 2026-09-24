@@ -1,18 +1,20 @@
 import Link from "next/link";
-import { restaurant, mapsUrl, telHref } from "@/lib/data/restaurant";
+import { mapsUrl, telHref } from "@/lib/restaurant";
+import { getRestaurant } from "@/lib/db";
 import { IconClock, IconLeaf, IconPhone, IconPin } from "@/components/ui/icons";
 
 /**
  * Compact restaurant facts, immediately below the hero.
  * Answers "where", "when" and "how do I order" without competing with it.
  */
-export function InfoBar() {
+export async function InfoBar() {
+  const restaurant = await getRestaurant();
   const cells = [
     {
       icon: IconPin,
       label: "Find us",
       lines: [restaurant.address.street, `${restaurant.address.city}, ${restaurant.address.state} ${restaurant.address.zip}`],
-      href: mapsUrl,
+      href: mapsUrl(restaurant),
       external: true,
     },
     {
@@ -24,7 +26,7 @@ export function InfoBar() {
       icon: IconPhone,
       label: "Call us",
       lines: [restaurant.phone, "Reservations & takeout"],
-      href: telHref,
+      href: telHref(restaurant),
     },
     {
       icon: IconLeaf,

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Order } from "@/lib/types";
-import { useDashboard } from "@/lib/restaurant-data";
+import { useDashboard } from "@/lib/dashboard-data";
 import { IconCheck, IconMail } from "@/components/ui/icons";
 
 const TONE: Record<string, string> = {

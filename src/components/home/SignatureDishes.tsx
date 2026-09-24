@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getSignatureDishes, getCategoryName } from "@/lib/data/menu";
+import { getCategories, getMenuItems } from "@/lib/db";
 import { currency } from "@/lib/format";
 import { BadgeOnDark } from "@/components/ui/Badge";
 import { IconArrowRight } from "@/components/ui/icons";
@@ -9,8 +9,10 @@ import { IconArrowRight } from "@/components/ui/icons";
  * Each card is a single link into the menu with ?item=<id>, which opens that
  * dish's detail modal on arrival: one tap from "that looks good" to ordering.
  */
-export function SignatureDishes() {
-  const dishes = getSignatureDishes();
+export async function SignatureDishes() {
+  const [items, categories] = await Promise.all([getMenuItems(), getCategories()]);
+  const dishes = items.filter((i) => i.signature);
+  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "";
 
   return (
     <section className="section">
@@ -57,7 +59,7 @@ export function SignatureDishes() {
 
                 <div className="absolute inset-x-0 bottom-0 p-4">
                   <p className="text-[0.6875rem] tracking-[0.14em] text-gold-bright/85 uppercase">
-                    {getCategoryName(dish.categoryId)}
+                    {categoryName(dish.categoryId)}
                   </p>
                   <h3 className="mt-1 font-display text-[1.3rem] leading-tight text-cream">
                     {dish.name}

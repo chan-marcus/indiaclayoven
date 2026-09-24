@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { galleryImages } from "@/lib/data/menu";
+import { galleryImages } from "@/lib/gallery";
 import { IconChevronLeft, IconChevronRight } from "@/components/ui/icons";
 
 /**

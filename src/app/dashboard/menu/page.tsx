@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { useDashboard } from "@/lib/restaurant-data";
+import { useDashboard } from "@/lib/dashboard-data";
 import { currency } from "@/lib/format";
 import type { MenuItem } from "@/lib/types";
 import { IconClose, IconEdit, IconPlus, IconSearch, IconTrash } from "@/components/ui/icons";
@@ -197,9 +197,7 @@ export default function MenuManagerPage() {
                 description: patch.description,
                 price: patch.price ?? 0,
                 categoryId: patch.categoryId ?? categories[0].id,
-                image: patch.image ?? "/images/curry-spread.jpg",
                 available: patch.available ?? true,
-                badges: [],
               });
             setEditing(null);
             setCreating(false);
@@ -290,7 +288,7 @@ function ItemEditor({
     e.preventDefault();
     onSave({
       name: form.name.trim(),
-      description: form.description.trim() || undefined,
+      description: form.description.trim(),
       price: Number(form.price) || 0,
       categoryId: form.categoryId,
       available: form.available,

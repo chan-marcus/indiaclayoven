@@ -1,19 +1,15 @@
 "use client";
 
-/* eslint-disable react-hooks/purity --
-   The only impure calls here are timestamps (Date.now / new Date) inside the
-   submit event handler, which runs on click rather than during render. */
-
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useCart } from "@/lib/cart-context";
-import { useRestaurantData } from "@/lib/restaurant-data";
 import { currency } from "@/lib/format";
-import { restaurant } from "@/lib/data/restaurant";
-import { saveOrder, nextOrderNumber } from "@/lib/order-store";
-import type { Order, OrderTiming, OrderType } from "@/lib/types";
+import { saveOrder } from "@/lib/order-store";
+import { placeOrder } from "@/app/actions";
+import { unwrap } from "@/lib/action-result";
+import type { OrderTiming, OrderType } from "@/lib/types";
 import { IconBag, IconCheck, IconLock } from "@/components/ui/icons";
 
 /** Next few half-hour slots, for "schedule for later". */
@@ -38,7 +34,6 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 export function CheckoutForm() {
   const router = useRouter();
   const { lines, subtotal, tax, total, deliveryFee, clear, count } = useCart();
-  const { addOrder, settings } = useRestaurantData();
   const slots = useTimeSlots();
 
   const [type, setType] = useState<OrderType>("pickup");
@@ -90,64 +85,39 @@ export function CheckoutForm() {
     }
 
     setSubmitting(true);
-    // Simulated payment + order submission.
-    await new Promise((r) => setTimeout(r, 1400));
 
     const requestedFor =
       timing === "asap"
         ? new Date(Date.now() + (isDelivery ? 45 : 25) * 60_000).toISOString()
-        : new Date(`${form.date}T12:00:00`).toISOString();
+        : new Date(`${form.date}T00:00:00`).toISOString();
+    const notes = [form.notes.trim(), timing === "scheduled" ? `Scheduled for ${form.time}` : ""]
+      .filter(Boolean)
+      .join(" · ");
 
-    const order: Order = {
-      id: `ord_${Date.now()}`,
-      restaurantId: restaurant.id,
-      number: nextOrderNumber(),
-      placedAt: new Date().toISOString(),
-      customer: {
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        email: form.email.trim(),
-        address: isDelivery ? form.address.trim() : undefined,
-      },
-      type,
-      timing,
-      requestedFor,
-      items: lines.map((l) => ({
-        itemId: l.itemId,
-        name: l.name,
-        price: l.price,
-        quantity: l.quantity,
-        notes: l.notes,
-      })),
-      subtotal,
-      tax,
-      deliveryFee: isDelivery ? deliveryFee : 0,
-      total: grand,
-      status: "new",
-      // Mirrors the owner's current order-email setting.
-      emailDelivery: settings.orderEmail.enabled
-        ? {
-            status: "sent",
-            detail: `Sent ${new Date().toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-            })}`,
-            attempts: 1,
-          }
-        : { status: "disabled", detail: "Order emails are off", attempts: 0 },
-      notes: form.notes.trim() || undefined,
-    };
-
-    // Human-readable scheduled time.
-    if (timing === "scheduled") {
-      order.requestedFor = new Date(`${form.date}T00:00:00`).toISOString();
-      order.notes = [order.notes, `Scheduled for ${form.time}`].filter(Boolean).join(" · ");
+    try {
+      // Payment is still simulated; the order itself is saved for real.
+      const order = unwrap(
+        await placeOrder({
+        customer: {
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          address: isDelivery ? form.address.trim() : undefined,
+        },
+        type,
+        timing,
+        requestedFor,
+          items: lines.map((l) => ({ itemId: l.itemId, quantity: l.quantity, notes: l.notes })),
+          notes,
+        }),
+      );
+      saveOrder(order);
+      clear();
+      router.push("/order/confirmation");
+    } catch (err) {
+      setSubmitting(false);
+      setErrors({ submit: err instanceof Error ? err.message : "Something went wrong. Please try again." });
     }
-
-    saveOrder(order);
-    addOrder(order); // lands on the owner's Orders screen
-    clear();
-    router.push("/order/confirmation");
   };
 
   if (count === 0) {
@@ -413,6 +383,11 @@ export function CheckoutForm() {
               <button type="submit" disabled={submitting} className="btn btn-primary btn-block">
                 {submitting ? "Placing your order…" : `Place order · ${currency(grand)}`}
               </button>
+              {errors.submit && (
+                <p data-error="true" role="alert" className="mt-3 text-sm text-danger">
+                  {errors.submit}
+                </p>
+              )}
               <Link
                 href="/menu"
                 className="mt-3 block text-center text-[0.8125rem] text-ink-500 underline-offset-4 hover:text-ink hover:underline"

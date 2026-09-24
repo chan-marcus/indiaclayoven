@@ -5,10 +5,12 @@ import { useEffect, useState } from "react";
 import type { Order } from "@/lib/types";
 import { loadOrder } from "@/lib/order-store";
 import { currency, timeOfDay, dayAndTime } from "@/lib/format";
-import { restaurant, fullAddress, mapsUrl, telHref } from "@/lib/data/restaurant";
+import { fullAddress, mapsUrl, telHref } from "@/lib/restaurant";
+import { useRestaurantData } from "@/lib/restaurant-data";
 import { IconCheck, IconPhone, IconPin } from "@/components/ui/icons";
 
 export function Confirmation() {
+  const { settings: restaurant } = useRestaurantData();
   const [order, setOrder] = useState<Order | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -82,7 +84,7 @@ export function Confirmation() {
                   <>
                     {restaurant.name}
                     <br />
-                    <span className="text-ink-500">{fullAddress}</span>
+                    <span className="text-ink-500">{fullAddress(restaurant)}</span>
                   </>
                 ) : (
                   order.customer.address
@@ -164,12 +166,12 @@ export function Confirmation() {
             Call us and quote order #{order.number} and we will pull it up.
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <a href={telHref} className="btn btn-primary btn-sm">
+            <a href={telHref(restaurant)} className="btn btn-primary btn-sm">
               <IconPhone className="h-4 w-4" />
               {restaurant.phone}
             </a>
             <a
-              href={mapsUrl}
+              href={mapsUrl(restaurant)}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-secondary btn-sm"

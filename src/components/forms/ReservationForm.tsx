@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { restaurant, telHref } from "@/lib/data/restaurant";
+import { telHref } from "@/lib/restaurant";
+import { useRestaurantData } from "@/lib/restaurant-data";
 import { IconCheck, IconPhone } from "@/components/ui/icons";
 
 const PARTY_SIZES = ["1", "2", "3", "4", "5", "6", "7", "8", "9+"];
@@ -21,6 +22,7 @@ function useDinnerSlots() {
 }
 
 export function ReservationForm() {
+  const { settings: restaurant } = useRestaurantData();
   const slots = useDinnerSlots();
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -79,7 +81,7 @@ export function ReservationForm() {
           confirm.
         </p>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href={telHref} className="btn btn-secondary btn-sm">
+          <a href={telHref(restaurant)} className="btn btn-secondary btn-sm">
             <IconPhone className="h-4 w-4" />
             {restaurant.phone}
           </a>
@@ -180,7 +182,7 @@ export function ReservationForm() {
 
       <p className="mt-4 text-center text-xs leading-relaxed text-ink-400">
         Requests are confirmed by phone. For same-day bookings and parties over eight, please call{" "}
-        <a href={telHref} className="text-gold underline-offset-4 hover:underline">
+        <a href={telHref(restaurant)} className="text-gold underline-offset-4 hover:underline">
           {restaurant.phone}
         </a>
         .

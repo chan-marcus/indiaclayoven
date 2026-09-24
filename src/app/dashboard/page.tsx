@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useDashboard } from "@/lib/restaurant-data";
+import { useDashboard } from "@/lib/dashboard-data";
 import { currency } from "@/lib/format";
 import { RelativeTime } from "@/components/dashboard/RelativeTime";
 import { EmailStatus } from "@/components/dashboard/EmailStatus";

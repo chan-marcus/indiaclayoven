@@ -1,15 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
-import { restaurant, mapsUrl, mapsEmbedUrl, telHref } from "@/lib/data/restaurant";
+import { mapsUrl, mapsEmbedUrl, telHref } from "@/lib/restaurant";
+import { getRestaurant } from "@/lib/db";
 import { IconArrowRight } from "@/components/ui/icons";
 
-export function FindUs() {
+export async function FindUs() {
+  const restaurant = await getRestaurant();
   return (
     <section className="section">
       <div className="container-page grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
         <div className="relative aspect-[5/4] overflow-hidden rounded-sm bg-cream-200 lg:aspect-[4/3]">
           <iframe
-            src={mapsEmbedUrl}
+            src={mapsEmbedUrl(restaurant)}
             title={`Map to ${restaurant.name}`}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
@@ -50,7 +52,7 @@ export function FindUs() {
                 Reservations & orders
               </dt>
               <dd className="mt-1.5 text-[0.9375rem] text-ink">
-                <a href={telHref} className="underline-offset-4 hover:underline">
+                <a href={telHref(restaurant)} className="underline-offset-4 hover:underline">
                   {restaurant.phone}
                 </a>
               </dd>
@@ -59,7 +61,7 @@ export function FindUs() {
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <a
-              href={mapsUrl}
+              href={mapsUrl(restaurant)}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-primary group"
@@ -77,7 +79,8 @@ export function FindUs() {
   );
 }
 
-export function ClosingCta() {
+export async function ClosingCta() {
+  const restaurant = await getRestaurant();
   return (
     <section className="relative isolate overflow-hidden bg-clay">
       <Image

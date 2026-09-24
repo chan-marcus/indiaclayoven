@@ -1,181 +1,137 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { Category, MenuItem, Order, OrderStatus, Restaurant } from "@/lib/types";
-import { seedOrders } from "@/lib/data/orders";
-import { categories as seedCategories, menuItems as seedItems } from "@/lib/data/menu";
-import { restaurant as seedRestaurant } from "@/lib/data/restaurant";
+import { createContext, useContext, useState } from "react";
+import type { Category, MenuItem, Restaurant } from "@/lib/types";
+import {
+  createCategory,
+  createMenuItem,
+  deleteMenuItem,
+  setItemAvailability,
+  updateMenuItem,
+  updateRestaurant,
+} from "@/app/actions";
+import { unwrap } from "@/lib/action-result";
 
 /**
- * One store behind both the customer website and the owner dashboard.
+ * The restaurant's public data (settings, categories, menu), shared by the
+ * customer site and the owner dashboard.
  *
- * This is what makes the prototype demonstrable: mark a dish sold out in the
- * dashboard and it is sold out on the menu; place an order on the site and it
- * lands on the owner's Orders screen. A production build would swap this for
- * the API layer. The component contracts would not change.
+ * Loaded from Supabase by the root layout on every request and handed in as
+ * `initial`. Owner edits are saved through server actions and applied here
+ * straight away, so the dashboard and the menu stay in step.
  *
- * Seed data renders on the server; anything the owner changed is restored from
- * localStorage after hydration.
+ * Orders are deliberately not here: they hold customer contact details, so
+ * they only load inside the dashboard (see dashboard-data.tsx).
  */
 
-const STORAGE_KEY = "ico.data.v3";
-
-interface DataValue {
-  items: MenuItem[];
-  categories: Category[];
-  orders: Order[];
+export type PublicData = {
   settings: Restaurant;
+  categories: Category[];
+  items: MenuItem[];
+};
 
-  // Menu management
-  toggleAvailability: (id: string) => void;
-  updateItem: (id: string, patch: Partial<MenuItem>) => void;
-  addItem: (item: Omit<MenuItem, "id" | "restaurantId" | "sort">) => void;
-  deleteItem: (id: string) => void;
-  addCategory: (name: string) => void;
+type ItemInput = Pick<MenuItem, "name" | "description" | "price" | "categoryId" | "available">;
+type SettingsInput = Parameters<typeof updateRestaurant>[0];
 
-  // Orders
-  addOrder: (order: Order) => void;
-  setOrderStatus: (id: string, status: OrderStatus) => void;
-  retryEmail: (id: string) => void;
-
-  // Settings
-  updateSettings: (patch: Partial<Restaurant>) => void;
-
-  /** Reset the prototype to its seeded state. */
-  resetAll: () => void;
+interface DataValue extends PublicData {
+  toggleAvailability: (id: string) => Promise<void>;
+  updateItem: (id: string, patch: Partial<ItemInput>) => Promise<void>;
+  addItem: (item: ItemInput & { image?: string }) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
+  addCategory: (name: string) => Promise<void>;
+  updateSettings: (input: SettingsInput) => Promise<void>;
 }
 
 const Ctx = createContext<DataValue | null>(null);
 
-type Persisted = {
-  items: MenuItem[];
-  categories: Category[];
-  orders: Order[];
-  settings: Restaurant;
-};
+/** Tells the owner a save failed, with the reason from the server. */
+export function reportFailure(action: string, err: unknown) {
+  const detail = err instanceof Error ? err.message : String(err);
+  window.alert(`Sorry, we could not ${action}.\n\n${detail}`);
+}
 
-export function RestaurantDataProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<MenuItem[]>(seedItems);
-  const [categories, setCategories] = useState<Category[]>(seedCategories);
-  const [orders, setOrders] = useState<Order[]>(seedOrders);
-  const [settings, setSettings] = useState<Restaurant>(seedRestaurant);
-  // Must be state, not a ref: the persist effect below has to wait for the
-  // *render* that carries the restored data, otherwise it writes the seed
-  // straight back over what the owner saved.
-  const [hydrated, setHydrated] = useState(false);
+export function RestaurantDataProvider({
+  initial,
+  children,
+}: {
+  initial: PublicData;
+  children: React.ReactNode;
+}) {
+  const [settings, setSettings] = useState(initial.settings);
+  const [categories, setCategories] = useState(initial.categories);
+  const [items, setItems] = useState(initial.items);
 
-  // Restore after hydration so server and first client render agree.
-  useEffect(() => {
-    try {
-      /* eslint-disable react-hooks/set-state-in-effect -- restoring the owner's
-         saved data from localStorage, which cannot be read during SSR. */
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const p = JSON.parse(raw) as Partial<Persisted>;
-        if (p.items?.length) setItems(p.items);
-        if (p.categories?.length) setCategories(p.categories);
-        if (p.orders?.length) setOrders(p.orders);
-        if (p.settings) setSettings(p.settings);
+  // A server refresh (after any save) hands in fresh data; adopt it.
+  const [seen, setSeen] = useState(initial);
+  if (seen !== initial) {
+    setSeen(initial);
+    setSettings(initial.settings);
+    setCategories(initial.categories);
+    setItems(initial.items);
+  }
+
+  const replaceItem = (item: MenuItem) =>
+    setItems((s) => s.map((i) => (i.id === item.id ? item : i)));
+
+  const value: DataValue = {
+    settings,
+    categories,
+    items,
+
+    toggleAvailability: async (id) => {
+      const before = items.find((i) => i.id === id);
+      if (!before) return;
+      replaceItem({ ...before, available: !before.available });
+      try {
+        unwrap(await setItemAvailability(id, !before.available));
+      } catch (err) {
+        replaceItem(before);
+        reportFailure("update that dish", err);
       }
-    } catch {
-      /* ignore malformed storage */
-    }
-    setHydrated(true);
-  }, []);
+    },
 
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ items, categories, orders, settings }),
-      );
-    } catch {
-      /* storage may be unavailable */
-    }
-  }, [hydrated, items, categories, orders, settings]);
+    updateItem: async (id, patch) => {
+      try {
+        replaceItem(unwrap(await updateMenuItem(id, patch)));
+      } catch (err) {
+        reportFailure("save that dish", err);
+      }
+    },
 
-  const retryEmail = useCallback((id: string) => {
-    setOrders((o) =>
-      o.map((x) =>
-        x.id === id
-          ? {
-              ...x,
-              emailDelivery: {
-                status: "sending",
-                detail: "Sending…",
-                attempts: x.emailDelivery.attempts + 1,
-              },
-            }
-          : x,
-      ),
-    );
-    // Simulated send.
-    window.setTimeout(() => {
-      setOrders((o) =>
-        o.map((x) =>
-          x.id === id
-            ? {
-                ...x,
-                emailDelivery: {
-                  status: "sent",
-                  detail: `Sent ${new Date().toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}`,
-                  attempts: x.emailDelivery.attempts,
-                },
-              }
-            : x,
-        ),
-      );
-    }, 2200);
-  }, []);
+    addItem: async (input) => {
+      try {
+        const created = unwrap(await createMenuItem(input));
+        setItems((s) => [...s, created]);
+      } catch (err) {
+        reportFailure("add that dish", err);
+      }
+    },
 
-  const value = useMemo<DataValue>(
-    () => ({
-      items,
-      categories,
-      orders,
-      settings,
+    deleteItem: async (id) => {
+      const before = items;
+      setItems((s) => s.filter((i) => i.id !== id));
+      try {
+        unwrap(await deleteMenuItem(id));
+      } catch (err) {
+        setItems(before);
+        reportFailure("remove that dish", err);
+      }
+    },
 
-      toggleAvailability: (id) =>
-        setItems((s) => s.map((i) => (i.id === id ? { ...i, available: !i.available } : i))),
-      updateItem: (id, patch) =>
-        setItems((s) => s.map((i) => (i.id === id ? { ...i, ...patch } : i))),
-      addItem: (item) =>
-        setItems((s) => [
-          ...s,
-          { ...item, id: `itm_new_${Date.now()}`, restaurantId: settings.id, sort: s.length + 1 },
-        ]),
-      deleteItem: (id) => setItems((s) => s.filter((i) => i.id !== id)),
-      addCategory: (name) =>
-        setCategories((c) => [
-          ...c,
-          { id: `cat_new_${Date.now()}`, restaurantId: settings.id, name, sort: c.length + 1 },
-        ]),
+    addCategory: async (name) => {
+      try {
+        const created = unwrap(await createCategory(name));
+        setCategories((c) => [...c, created]);
+      } catch (err) {
+        reportFailure("add that category", err);
+      }
+    },
 
-      addOrder: (order) => setOrders((o) => [order, ...o]),
-      setOrderStatus: (id, status) =>
-        setOrders((o) => o.map((x) => (x.id === id ? { ...x, status } : x))),
-      retryEmail,
-
-      updateSettings: (patch) => setSettings((s) => ({ ...s, ...patch })),
-
-      resetAll: () => {
-        try {
-          window.localStorage.removeItem(STORAGE_KEY);
-        } catch {
-          /* ignore */
-        }
-        setItems(seedItems);
-        setCategories(seedCategories);
-        setOrders(seedOrders);
-        setSettings(seedRestaurant);
-      },
-    }),
-    [items, categories, orders, settings, retryEmail],
-  );
+    updateSettings: async (input) => {
+      // Rethrown so the settings form can tell the owner it did not save.
+      setSettings(unwrap(await updateRestaurant(input)));
+    },
+  };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -185,6 +141,3 @@ export function useRestaurantData() {
   if (!v) throw new Error("useRestaurantData must be used inside <RestaurantDataProvider>");
   return v;
 }
-
-/** Kept so dashboard screens read naturally. */
-export const useDashboard = useRestaurantData;

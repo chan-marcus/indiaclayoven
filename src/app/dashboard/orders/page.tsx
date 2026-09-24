@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useDashboard } from "@/lib/restaurant-data";
+import { useDashboard } from "@/lib/dashboard-data";
 import { currency, timeOfDay, dayAndTime } from "@/lib/format";
 import { RelativeTime } from "@/components/dashboard/RelativeTime";
 import { EmailStatus } from "@/components/dashboard/EmailStatus";

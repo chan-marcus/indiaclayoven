@@ -2,7 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/site/PageHeader";
-import { restaurant, fullAddress, mapsUrl, telHref } from "@/lib/data/restaurant";
+import { fullAddress, mapsUrl, telHref } from "@/lib/restaurant";
+import { getRestaurant } from "@/lib/db";
 import { IconArrowRight } from "@/components/ui/icons";
 
 export const metadata: Metadata = {
@@ -11,7 +12,8 @@ export const metadata: Metadata = {
     "A neighbourhood clay oven on Clement Street. The story behind India Clay Oven: charcoal tandoor cooking, house-ground spices and the Richmond District.",
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const restaurant = await getRestaurant();
   return (
     <>
       <PageHeader
@@ -154,7 +156,7 @@ export default function AboutPage() {
                   Reservations & orders
                 </dt>
                 <dd className="mt-1.5 text-[0.9375rem]">
-                  <a href={telHref} className="underline-offset-4 hover:underline">
+                  <a href={telHref(restaurant)} className="underline-offset-4 hover:underline">
                     {restaurant.phone}
                   </a>
                 </dd>
@@ -167,12 +169,12 @@ export default function AboutPage() {
                 <IconArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
               <a
-                href={mapsUrl}
+                href={mapsUrl(restaurant)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-secondary"
               >
-                Directions to {fullAddress.split(",")[0]}
+                Directions to {fullAddress(restaurant).split(",")[0]}
               </a>
             </div>
           </div>

@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 import type { CartLine, MenuItem } from "@/lib/types";
-import { restaurant } from "@/lib/data/restaurant";
+import { useRestaurantData } from "@/lib/restaurant-data";
 
 /* ------------------------------------------------------------------ */
 /* Reducer                                                             */
@@ -157,30 +157,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setPulse((p) => p + 1);
   }, []);
 
-  const subtotal = useMemo(
-    () => state.lines.reduce((sum, l) => sum + l.price * l.quantity, 0),
-    [state.lines],
-  );
+  const { settings, items } = useRestaurantData();
+
+  // Price every line from the live menu, so a price change made in the
+  // dashboard reaches carts already saved in the browser.
+  const lines = useMemo(() => {
+    const priceOf = new Map(items.map((i) => [i.id, i.price]));
+    return state.lines.map((l) => ({ ...l, price: priceOf.get(l.itemId) ?? l.price }));
+  }, [state.lines, items]);
+
+  const subtotal = useMemo(() => lines.reduce((sum, l) => sum + l.price * l.quantity, 0), [lines]);
   const count = useMemo(
     () => state.lines.reduce((sum, l) => sum + l.quantity, 0),
     [state.lines],
   );
-  const tax = useMemo(() => subtotal * restaurant.taxRate, [subtotal]);
+  // Rounded to the cent the same way the server does when the order is placed.
+  const tax = useMemo(() => Math.round(subtotal * settings.taxRate * 100) / 100, [subtotal, settings.taxRate]);
 
   const total = useCallback(
     (opts?: { delivery?: boolean }) =>
-      subtotal + tax + (opts?.delivery ? restaurant.deliveryFee : 0),
-    [subtotal, tax],
+      subtotal + tax + (opts?.delivery ? settings.deliveryFee : 0),
+    [subtotal, tax, settings.deliveryFee],
   );
 
   const value: CartValue = {
-    lines: state.lines,
+    lines,
     count,
     subtotal,
     tax,
     total,
-    deliveryFee: restaurant.deliveryFee,
-    taxRate: restaurant.taxRate,
+    deliveryFee: settings.deliveryFee,
+    taxRate: settings.taxRate,
     isOpen,
     openCart: () => setOpen(true),
     closeCart: () => setOpen(false),

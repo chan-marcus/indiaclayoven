@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import { restaurant } from "@/lib/data/restaurant";
+import { useRestaurantData } from "@/lib/restaurant-data";
 import { OvenMark } from "./OvenMark";
 
 /**
@@ -14,6 +16,7 @@ export function Logo({
   tone?: "dark" | "light";
   className?: string;
 }) {
+  const { settings: restaurant } = useRestaurantData();
   const wordmark = tone === "light" ? "text-cream" : "text-ink";
   const sub = tone === "light" ? "text-gold-bright/85" : "text-gold";
   const mark = tone === "light" ? "text-gold-bright" : "text-clay";

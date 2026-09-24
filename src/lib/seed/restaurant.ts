@@ -1,12 +1,11 @@
 import type { Restaurant } from "@/lib/types";
+import { RESTAURANT_ID } from "@/lib/restaurant";
 
 /**
- * The single seeded restaurant for this prototype.
- * Real details taken from the client's existing concepts.
+ * Seed record for the restaurant. Real details taken from the client's
+ * existing concepts. The live copy is in Supabase; see scripts/seed.ts.
  */
-export const RESTAURANT_ID = "rst_india_clay_oven";
-
-export const restaurant: Restaurant = {
+export const seedRestaurant: Restaurant = {
   id: RESTAURANT_ID,
   name: "India Clay Oven",
   tagline: "Restaurant & Bar",
@@ -40,15 +39,3 @@ export const restaurant: Restaurant = {
   taxRate: 0.0863, // San Francisco
   deliveryFee: 4.99,
 };
-
-export const fullAddress = `${restaurant.address.street}, ${restaurant.address.city}, ${restaurant.address.state} ${restaurant.address.zip}`;
-
-export const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-  `${restaurant.name}, ${fullAddress}`,
-)}`;
-
-export const mapsEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(
-  `${restaurant.name}, ${fullAddress}`,
-)}&output=embed`;
-
-export const telHref = `tel:${restaurant.phone.replace(/[^\d+]/g, "")}`;

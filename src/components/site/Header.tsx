@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { Logo } from "./Logo";
 import { useCart } from "@/lib/cart-context";
 import { IconBag, IconClose, IconMenu, IconPhone } from "@/components/ui/icons";
-import { restaurant, telHref } from "@/lib/data/restaurant";
+import { telHref } from "@/lib/restaurant";
+import { useRestaurantData } from "@/lib/restaurant-data";
 
 const NAV = [
   { href: "/", label: "Home" },
@@ -17,6 +18,7 @@ const NAV = [
 ];
 
 export function Header() {
+  const { settings: restaurant } = useRestaurantData();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -102,7 +104,7 @@ export function Header() {
           {/* Right cluster */}
           <div className="flex items-center gap-2 sm:gap-3">
             <a
-              href={telHref}
+              href={telHref(restaurant)}
               className="hidden items-center gap-1.5 text-[0.8125rem] text-ink-500 transition-colors hover:text-ink xl:inline-flex"
             >
               <IconPhone className="h-4 w-4" />
@@ -190,7 +192,7 @@ export function Header() {
               >
                 Order Online
               </Link>
-              <a href={telHref} className="btn btn-secondary btn-block">
+              <a href={telHref(restaurant)} className="btn btn-secondary btn-block">
                 <IconPhone className="h-4 w-4" />
                 {restaurant.phone}
               </a>
