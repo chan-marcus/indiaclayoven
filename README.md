@@ -3,8 +3,9 @@
 A high-fidelity **customer-approval prototype** for India Clay Oven Restaurant & Bar,
 2436 Clement Street, San Francisco.
 
-Menu, restaurant details and orders are stored in **Supabase**. There are no real
-payments, owner login or email sending yet. Everything else — browsing, ordering,
+Menu, restaurant details and orders are stored in **Supabase**, and each new order
+is emailed to the restaurant through **Resend**. There are no real payments or owner
+login yet. Everything else — browsing, ordering,
 checkout, the owner dashboard — behaves for real.
 
 ```bash
@@ -14,12 +15,14 @@ npm run dev     # http://localhost:3000
 
 ### Environment
 
-Create `.env.local` (gitignored) with the project's values, and add the first two to
+Create `.env.local` (gitignored) with the project's values, and add the first four to
 Vercel → Project Settings → Environment Variables:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_SECRET_KEY=sb_secret_…
+RESEND_API_KEY=re_…                                  # order emails
+ORDER_EMAIL_FROM="India Clay Oven <orders@your-verified-domain>"  # optional
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…   # for owner login, later
 SUPABASE_DB_URL=postgresql://…pooler.supabase.com:5432/postgres  # local only, for migrations
 ```
@@ -114,7 +117,6 @@ launch; the file names describe the dish, so it is a like-for-like swap.
 
 ## Not built (by design)
 
-Real Stripe payments · order email delivery · owner login · reservation
+Real Stripe payments · customer confirmation emails · owner login · reservation
 integration · analytics · multi-restaurant admin. The brief excludes all of these
-from the prototype. Order email is shown as a delivery status and a **Resend Email** control
-in the dashboard, which is what the owner needs to understand.
+from the prototype.

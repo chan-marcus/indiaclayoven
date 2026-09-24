@@ -9,6 +9,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { getMenuItems, getOrders, getRestaurant } from "@/lib/db";
 import { RESTAURANT_ID, RESTAURANT_TIME_ZONE } from "@/lib/restaurant";
@@ -24,6 +25,7 @@ import {
   type RestaurantRow,
 } from "@/lib/db-rows";
 import type { ActionResult } from "@/lib/action-result";
+import { sendOrderEmail } from "@/lib/email/order-email";
 import type {
   Category,
   MenuItem,
@@ -76,6 +78,14 @@ function money(value: unknown, field: string): number {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function emailAddress(value: unknown, field: string): string {
+  const v = text(value, field, 200);
+  if (!EMAIL_RE.test(v)) throw new InputError(`${field} does not look like an email address`);
+  return v;
+}
 
 const sentNow = () =>
   `Sent ${new Date().toLocaleTimeString("en-US", {
@@ -262,8 +272,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
     const tax = round2(subtotal * restaurant.taxRate);
     const deliveryFee = isDelivery ? restaurant.deliveryFee : 0;
 
-    const email = text(input.customer?.email, "Email", 200);
-    if (!/^\S+@\S+\.\S+$/.test(email)) throw new InputError("That email does not look right");
+    const email = emailAddress(input.customer?.email, "Your email");
 
     const row = check<OrderRow>(
       await supabase
@@ -286,8 +295,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
           delivery_fee: deliveryFee,
           total: round2(subtotal + tax + deliveryFee),
           status: "new",
-          email_delivery: restaurant.orderEmail.enabled
-            ? { status: "sent", detail: sentNow(), attempts: 1 }
+          email_delivery: emailsOn(restaurant)
+            ? { status: "sending", detail: "Sending…", attempts: 0 }
             : { status: "disabled", detail: "Order emails are off", attempts: 0 },
           notes: optionalText(input.notes, "Order note", 1000),
         })
@@ -295,7 +304,11 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
         .single(),
       "place your order",
     );
-    return orderFromRow(row);
+    const order = orderFromRow(row);
+    // Email after the customer has their confirmation, so a slow or failing
+    // email service never holds up or loses an order.
+    if (emailsOn(restaurant)) after(() => deliverOrderEmail(order, restaurant));
+    return order;
   });
 }
 
@@ -321,35 +334,45 @@ export async function setOrderStatus(id: string, status: OrderStatus): Promise<A
   });
 }
 
-/** Email sending is simulated for now: a resend is recorded as sent. */
+const emailsOn = (r: Restaurant) => r.orderEmail.enabled && r.orderEmail.addresses.length > 0;
+
+/** Sends the order email and records the outcome on the order. */
+async function deliverOrderEmail(order: Order, restaurant: Restaurant): Promise<Order> {
+  const result = await sendOrderEmail(order, restaurant);
+  const row = check<OrderRow>(
+    await supabase
+      .from("orders")
+      .update({
+        email_delivery: {
+          status: result.ok ? "sent" : "failed",
+          detail: result.ok ? sentNow() : result.reason,
+          attempts: order.emailDelivery.attempts + 1,
+        },
+      })
+      .eq("id", order.id)
+      .eq("restaurant_id", RESTAURANT_ID)
+      .select()
+      .single(),
+    "record the email result",
+  );
+  return orderFromRow(row);
+}
+
 export async function resendOrderEmail(id: string): Promise<ActionResult<Order>> {
   return run(async () => {
-    const current = check<Pick<OrderRow, "email_delivery">>(
-      await supabase
+    const [restaurant, row] = await Promise.all([
+      getRestaurant(),
+      supabase
         .from("orders")
-        .select("email_delivery")
+        .select("*")
         .eq("id", text(id, "Order"))
         .eq("restaurant_id", RESTAURANT_ID)
         .single(),
-      "resend the email",
-    );
-    const row = check<OrderRow>(
-      await supabase
-        .from("orders")
-        .update({
-          email_delivery: {
-            status: "sent",
-            detail: sentNow(),
-            attempts: current.email_delivery.attempts + 1,
-          },
-        })
-        .eq("id", id)
-        .eq("restaurant_id", RESTAURANT_ID)
-        .select()
-        .single(),
-      "resend the email",
-    );
-    return orderFromRow(row);
+    ]);
+    if (!emailsOn(restaurant)) {
+      throw new InputError("Order emails are turned off. Turn them on in Settings first.");
+    }
+    return deliverOrderEmail(orderFromRow(check<OrderRow>(row, "find the order")), restaurant);
   });
 }
 
@@ -358,6 +381,19 @@ export async function resendOrderEmail(id: string): Promise<ActionResult<Order>>
 /* ------------------------------------------------------------------ */
 
 type SettingsInput = Pick<Restaurant, "name" | "phone" | "address" | "hours" | "orderEmail" | "owner">;
+
+/** Up to two addresses; at least one while order emails are on. */
+function orderEmailSettings(input: Restaurant["orderEmail"] | undefined): Restaurant["orderEmail"] {
+  const enabled = Boolean(input?.enabled);
+  const raw = Array.isArray(input?.addresses) ? input.addresses : [];
+  const filled = raw.filter((a) => typeof a === "string" && a.trim());
+  if (filled.length > 2) throw new InputError("Orders can go to at most two email addresses");
+  const addresses = [...new Set(filled.map((a) => emailAddress(a, "Order email address").toLowerCase()))];
+  if (enabled && addresses.length === 0) {
+    throw new InputError("Add an email address to send orders to, or turn order emails off");
+  }
+  return { enabled, addresses };
+}
 
 export async function updateRestaurant(input: SettingsInput): Promise<ActionResult<Restaurant>> {
   return run(async () => {
@@ -378,13 +414,7 @@ export async function updateRestaurant(input: SettingsInput): Promise<ActionResu
         summary: text(input.hours?.summary, "Hours", 200),
         buffet: text(input.hours?.buffet, "Buffet hours", 200),
       },
-      orderEmail: {
-        enabled: Boolean(input.orderEmail?.enabled),
-        address: input.orderEmail?.enabled
-          ? text(input.orderEmail.address, "Order email address", 200)
-          : (optionalText(input.orderEmail?.address, "Order email address", 200) ??
-            current.orderEmail.address),
-      },
+      orderEmail: orderEmailSettings(input.orderEmail),
       owner: {
         name: text(input.owner?.name, "Owner name", 120),
         email: text(input.owner?.email, "Owner email", 200),

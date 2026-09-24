@@ -19,7 +19,8 @@ export default function SettingsPage() {
     hours: settings.hours.summary,
     buffet: settings.hours.buffet,
     emailEnabled: settings.orderEmail.enabled,
-    emailAddress: settings.orderEmail.address,
+    emailAddress1: settings.orderEmail.addresses[0] ?? "",
+    emailAddress2: settings.orderEmail.addresses[1] ?? "",
     ownerName: settings.owner.name,
     ownerEmail: settings.owner.email,
   });
@@ -32,7 +33,10 @@ export default function SettingsPage() {
         phone: form.phone,
         address: { ...settings.address, street: form.street, city: form.city, state: form.state, zip: form.zip },
         hours: { ...settings.hours, summary: form.hours, buffet: form.buffet },
-        orderEmail: { enabled: form.emailEnabled, address: form.emailAddress },
+        orderEmail: {
+          enabled: form.emailEnabled,
+          addresses: [form.emailAddress1, form.emailAddress2].filter((a) => a.trim()),
+        },
         owner: { name: form.ownerName, email: form.ownerEmail },
       });
     } catch (err) {
@@ -152,21 +156,32 @@ export default function SettingsPage() {
           </label>
 
           {form.emailEnabled && (
-            <div className="mt-4 animate-rise">
-              <label htmlFor="s-order-email" className="field-label">
-                Send orders to
-              </label>
-              <input
-                id="s-order-email"
-                type="email"
-                value={form.emailAddress}
-                onChange={(e) => setForm({ ...form, emailAddress: e.target.value })}
-                className="field-input sm:max-w-xs"
-              />
+            <fieldset className="mt-4 animate-rise">
+              <legend className="field-label">Send orders to</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  type="email"
+                  aria-label="First email address"
+                  required
+                  value={form.emailAddress1}
+                  onChange={(e) => setForm({ ...form, emailAddress1: e.target.value })}
+                  placeholder="you@example.com"
+                  className="field-input"
+                />
+                <input
+                  type="email"
+                  aria-label="Second email address (optional)"
+                  value={form.emailAddress2}
+                  onChange={(e) => setForm({ ...form, emailAddress2: e.target.value })}
+                  placeholder="Second address (optional)"
+                  className="field-input"
+                />
+              </div>
               <p className="mt-2 text-xs text-ink-400">
-                If an email bounces, we flag it on your Orders screen so you can resend it.
+                <span className="block">Every new order goes to each address.</span>
+                <span className="block">Any that fail can be resent from Orders.</span>
               </p>
-            </div>
+            </fieldset>
           )}
         </section>
 

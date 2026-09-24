@@ -30,7 +30,7 @@ export const seedRestaurant: Restaurant = {
   },
   orderEmail: {
     enabled: true,
-    address: "owner@indiaclayoven.com",
+    addresses: ["owner@indiaclayoven.com"],
   },
   owner: {
     name: "Jasprit Singh",

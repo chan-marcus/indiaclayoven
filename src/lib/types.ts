@@ -32,10 +32,10 @@ export interface Restaurant {
     buffet: string;
     detail: { days: string; time: string }[];
   };
-  /** Where new orders are emailed. Simulated in the prototype. */
+  /** New orders are emailed to these addresses (one or two). */
   orderEmail: {
     enabled: boolean;
-    address: string;
+    addresses: string[];
   };
   owner: {
     name: string;
