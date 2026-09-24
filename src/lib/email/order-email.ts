@@ -24,18 +24,18 @@ function whenLine(order: Order) {
   return `Scheduled for ${localTime(order.requestedFor, { weekday: "long", month: "long", day: "numeric" })}`;
 }
 
-export function buildOrderEmail(order: Order, restaurant: Restaurant) {
+export function buildOrderEmail(order: Order) {
   const kind = order.type === "pickup" ? "Pickup" : "Delivery";
   const subject = `New order #${order.number} · ${kind} · ${money(order.total)}`;
   const placed = localTime(order.placedAt, { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" });
 
+  // Kitchens print these, so the layout is black on white with no tints and
+  // nothing that only matters on screen.
   const rows: [string, string][] = [
-    ["Order", `#${order.number} · ${kind}`],
     ["Placed", placed],
     ["Wanted", whenLine(order)],
     ["Customer", order.customer.name],
     ["Phone", order.customer.phone],
-    ["Email", order.customer.email],
     ...(order.customer.address ? [["Deliver to", order.customer.address] as [string, string]] : []),
   ];
 
@@ -45,51 +45,44 @@ export function buildOrderEmail(order: Order, restaurant: Restaurant) {
     ["Tax", order.tax],
   ];
 
-  const cell = "padding:6px 0;vertical-align:top;font-size:15px;";
+  const cell = "padding:3px 0;vertical-align:top;font-size:14px;";
+  const rule = "border-top:1px solid #000;";
   const html = `<!doctype html>
-<html><body style="margin:0;background:#fbf7f1;font-family:Arial,Helvetica,sans-serif;color:#1a1512;">
-<div style="max-width:560px;margin:0 auto;padding:28px 20px;">
-  <p style="margin:0 0 4px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#b4832f;">${esc(restaurant.name)}</p>
-  <h1 style="margin:0 0 20px;font-size:24px;font-weight:normal;">New ${kind.toLowerCase()} order #${order.number}</h1>
+<html><body style="margin:0;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#000;">
+<div style="max-width:560px;margin:0 auto;padding:16px;">
+  <h1 style="margin:0 0 10px;font-size:20px;">${kind} order #${order.number}</h1>
 
-  <table role="presentation" style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;margin-bottom:10px;">
     ${rows
-      .map(
-        ([k, v]) =>
-          `<tr><td style="${cell}width:110px;color:#7a6f66;">${k}</td><td style="${cell}">${esc(v)}</td></tr>`,
-      )
+      .map(([k, v]) => `<tr><td style="${cell}width:90px;">${k}</td><td style="${cell}">${esc(v)}</td></tr>`)
       .join("\n    ")}
   </table>
 
-  <table role="presentation" style="width:100%;border-collapse:collapse;border-top:1px solid #e6ddd0;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;${rule}">
     ${order.items
       .map(
         (i) => `<tr>
-      <td style="${cell}border-bottom:1px solid #efe8dd;padding:10px 0;">
-        <strong>${i.quantity}×</strong> ${esc(i.name)}${i.notes ? `<br><span style="font-size:13px;color:#7a6f66;font-style:italic;">“${esc(i.notes)}”</span>` : ""}
-      </td>
-      <td style="${cell}border-bottom:1px solid #efe8dd;padding:10px 0;text-align:right;white-space:nowrap;">${money(i.price * i.quantity)}</td>
+      <td style="${cell}"><strong>${i.quantity}×</strong> ${esc(i.name)}${i.notes ? `<br><em style="font-size:13px;">“${esc(i.notes)}”</em>` : ""}</td>
+      <td style="${cell}text-align:right;white-space:nowrap;">${money(i.price * i.quantity)}</td>
     </tr>`,
       )
       .join("\n    ")}
     ${totals
       .map(
-        ([k, v]) =>
-          `<tr><td style="${cell}color:#7a6f66;">${k}</td><td style="${cell}text-align:right;">${money(v)}</td></tr>`,
+        ([k, v], n) =>
+          `<tr><td style="${cell}${n === 0 ? rule : ""}">${k}</td><td style="${cell}${n === 0 ? rule : ""}text-align:right;">${money(v)}</td></tr>`,
       )
       .join("\n    ")}
-    <tr><td style="${cell}font-weight:bold;font-size:17px;border-top:1px solid #e6ddd0;padding-top:10px;">Total</td>
-        <td style="${cell}font-weight:bold;font-size:17px;border-top:1px solid #e6ddd0;padding-top:10px;text-align:right;">${money(order.total)}</td></tr>
+    <tr><td style="${cell}${rule}font-weight:bold;font-size:16px;">Total</td>
+        <td style="${cell}${rule}font-weight:bold;font-size:16px;text-align:right;">${money(order.total)}</td></tr>
   </table>
 
-  ${order.notes ? `<p style="margin:20px 0 0;padding:12px 14px;background:#f3ece2;font-size:14px;"><strong>Note for the kitchen:</strong> ${esc(order.notes)}</p>` : ""}
-
-  <p style="margin:24px 0 0;font-size:13px;color:#7a6f66;">Reply to this email to reach ${esc(order.customer.name)} directly.</p>
+  ${order.notes ? `<p style="margin:10px 0 0;font-size:14px;"><strong>Kitchen note:</strong> ${esc(order.notes)}</p>` : ""}
 </div>
 </body></html>`;
 
   const text = [
-    `New ${kind.toLowerCase()} order #${order.number}`,
+    `${kind} order #${order.number}`,
     "",
     ...rows.map(([k, v]) => `${k}: ${v}`),
     "",
@@ -99,7 +92,7 @@ export function buildOrderEmail(order: Order, restaurant: Restaurant) {
     "",
     ...totals.map(([k, v]) => `${k}: ${money(v)}`),
     `Total: ${money(order.total)}`,
-    ...(order.notes ? ["", `Note for the kitchen: ${order.notes}`] : []),
+    ...(order.notes ? ["", `Kitchen note: ${order.notes}`] : []),
   ].join("\n");
 
   return { subject, html, text };
@@ -114,7 +107,7 @@ export async function sendOrderEmail(order: Order, restaurant: Restaurant): Prom
   const to = restaurant.orderEmail.addresses;
   if (to.length === 0) return { ok: false, reason: "No address to send to" };
 
-  const { subject, html, text } = buildOrderEmail(order, restaurant);
+  const { subject, html, text } = buildOrderEmail(order);
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
