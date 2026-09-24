@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useDashboard } from "@/lib/restaurant-data";
 import { currency } from "@/lib/format";
 import { RelativeTime } from "@/components/dashboard/RelativeTime";
-import { FaxStatus } from "@/components/dashboard/FaxStatus";
+import { EmailStatus } from "@/components/dashboard/EmailStatus";
 import { IconArrowRight } from "@/components/ui/icons";
 
 export default function OverviewPage() {
@@ -14,7 +14,7 @@ export default function OverviewPage() {
   const openOrders = orders.filter((o) => o.status === "new" || o.status === "in_progress");
   const revenue = orders.reduce((s, o) => s + o.total, 0);
   const soldOut = items.filter((i) => !i.available);
-  const faxTrouble = orders.filter((o) => o.fax.status === "failed");
+  const emailTrouble = orders.filter((o) => o.emailDelivery.status === "failed");
 
   return (
     <div className="container-page py-8">
@@ -40,18 +40,18 @@ export default function OverviewPage() {
         ))}
       </dl>
 
-      {faxTrouble.length > 0 && (
+      {emailTrouble.length > 0 && (
         <div className="mt-7">
           <h2 className="text-[0.6875rem] font-medium tracking-[0.14em] text-ink-400 uppercase">
             Needs your attention
           </h2>
           <div className="mt-3 space-y-2">
-            {faxTrouble.map((o) => (
+            {emailTrouble.map((o) => (
               <div key={o.id} className="rounded-sm border border-cream-300 bg-white p-4">
                 <p className="mb-2.5 text-[0.9375rem] font-medium">
                   Order #{o.number} · {o.customer.name}
                 </p>
-                <FaxStatus order={o} />
+                <EmailStatus order={o} />
               </div>
             ))}
           </div>

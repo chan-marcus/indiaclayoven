@@ -32,10 +32,10 @@ export interface Restaurant {
     buffet: string;
     detail: { days: string; time: string }[];
   };
-  /** Simulated fax delivery settings. See the Fax concept in the dashboard. */
-  fax: {
+  /** Where new orders are emailed. Simulated in the prototype. */
+  orderEmail: {
     enabled: boolean;
-    number: string;
+    address: string;
   };
   owner: {
     name: string;
@@ -88,7 +88,7 @@ export interface CartLine {
 export type OrderType = "pickup" | "delivery";
 export type OrderTiming = "asap" | "scheduled";
 export type OrderStatus = "new" | "in_progress" | "ready" | "completed";
-export type FaxStatus = "sent" | "sending" | "failed" | "disabled";
+export type EmailStatus = "sent" | "sending" | "failed" | "disabled";
 
 export interface OrderItem {
   itemId: ID;
@@ -118,8 +118,8 @@ export interface Order {
   deliveryFee: number;
   total: number;
   status: OrderStatus;
-  fax: {
-    status: FaxStatus;
+  emailDelivery: {
+    status: EmailStatus;
     detail: string;
     attempts: number;
   };

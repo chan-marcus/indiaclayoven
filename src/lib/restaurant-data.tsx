@@ -18,7 +18,7 @@ import { restaurant as seedRestaurant } from "@/lib/data/restaurant";
  * localStorage after hydration.
  */
 
-const STORAGE_KEY = "ico.data.v1";
+const STORAGE_KEY = "ico.data.v2";
 
 interface DataValue {
   items: MenuItem[];
@@ -36,7 +36,7 @@ interface DataValue {
   // Orders
   addOrder: (order: Order) => void;
   setOrderStatus: (id: string, status: OrderStatus) => void;
-  retryFax: (id: string) => void;
+  retryEmail: (id: string) => void;
 
   // Settings
   updateSettings: (patch: Partial<Restaurant>) => void;
@@ -95,28 +95,35 @@ export function RestaurantDataProvider({ children }: { children: React.ReactNode
     }
   }, [hydrated, items, categories, orders, settings]);
 
-  const retryFax = useCallback((id: string) => {
+  const retryEmail = useCallback((id: string) => {
     setOrders((o) =>
       o.map((x) =>
         x.id === id
-          ? { ...x, fax: { status: "sending", detail: "Dialling…", attempts: x.fax.attempts + 1 } }
+          ? {
+              ...x,
+              emailDelivery: {
+                status: "sending",
+                detail: "Sending…",
+                attempts: x.emailDelivery.attempts + 1,
+              },
+            }
           : x,
       ),
     );
-    // Simulated Telnyx round-trip.
+    // Simulated send.
     window.setTimeout(() => {
       setOrders((o) =>
         o.map((x) =>
           x.id === id
             ? {
                 ...x,
-                fax: {
+                emailDelivery: {
                   status: "sent",
                   detail: `Sent ${new Date().toLocaleTimeString("en-US", {
                     hour: "numeric",
                     minute: "2-digit",
                   })}`,
-                  attempts: x.fax.attempts,
+                  attempts: x.emailDelivery.attempts,
                 },
               }
             : x,
@@ -151,7 +158,7 @@ export function RestaurantDataProvider({ children }: { children: React.ReactNode
       addOrder: (order) => setOrders((o) => [order, ...o]),
       setOrderStatus: (id, status) =>
         setOrders((o) => o.map((x) => (x.id === id ? { ...x, status } : x))),
-      retryFax,
+      retryEmail,
 
       updateSettings: (patch) => setSettings((s) => ({ ...s, ...patch })),
 
@@ -167,7 +174,7 @@ export function RestaurantDataProvider({ children }: { children: React.ReactNode
         setSettings(seedRestaurant);
       },
     }),
-    [items, categories, orders, settings, retryFax],
+    [items, categories, orders, settings, retryEmail],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

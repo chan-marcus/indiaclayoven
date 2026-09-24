@@ -124,8 +124,8 @@ export function CheckoutForm() {
       deliveryFee: isDelivery ? deliveryFee : 0,
       total: grand,
       status: "new",
-      // Mirrors the owner's current fax setting.
-      fax: settings.fax.enabled
+      // Mirrors the owner's current order-email setting.
+      emailDelivery: settings.orderEmail.enabled
         ? {
             status: "sent",
             detail: `Sent ${new Date().toLocaleTimeString("en-US", {
@@ -134,7 +134,7 @@ export function CheckoutForm() {
             })}`,
             attempts: 1,
           }
-        : { status: "disabled", detail: "Fax delivery is off", attempts: 0 },
+        : { status: "disabled", detail: "Order emails are off", attempts: 0 },
       notes: form.notes.trim() || undefined,
     };
 

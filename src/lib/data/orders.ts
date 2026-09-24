@@ -28,7 +28,7 @@ export const seedOrders: Order[] = [
     deliveryFee: 0,
     total: 39.98,
     status: "new",
-    fax: { status: "sent", detail: "Sent 2:42 PM", attempts: 1 },
+    emailDelivery: { status: "sent", detail: "Sent 2:42 PM", attempts: 1 },
     notes: "Medium spice please.",
   },
   {
@@ -55,7 +55,7 @@ export const seedOrders: Order[] = [
     deliveryFee: 4.99,
     total: 63.38,
     status: "in_progress",
-    fax: { status: "failed", detail: "Line busy, 2 attempts", attempts: 2 },
+    emailDelivery: { status: "failed", detail: "Bounced, 2 attempts", attempts: 2 },
   },
   {
     id: "ord_1046",
@@ -76,7 +76,7 @@ export const seedOrders: Order[] = [
     deliveryFee: 0,
     total: 61.7,
     status: "ready",
-    fax: { status: "sent", detail: "Sent 1:58 PM", attempts: 1 },
+    emailDelivery: { status: "sent", detail: "Sent 1:58 PM", attempts: 1 },
     notes: "Birthday. Please include candles if you can.",
   },
   {
@@ -103,7 +103,7 @@ export const seedOrders: Order[] = [
     deliveryFee: 4.99,
     total: 74.3,
     status: "completed",
-    fax: { status: "sent", detail: "Sent 12:51 PM", attempts: 1 },
+    emailDelivery: { status: "sent", detail: "Sent 12:51 PM", attempts: 1 },
   },
   {
     id: "ord_1044",
@@ -124,6 +124,6 @@ export const seedOrders: Order[] = [
     deliveryFee: 0,
     total: 39.98,
     status: "completed",
-    fax: { status: "sent", detail: "Sent 12:27 PM", attempts: 1 },
+    emailDelivery: { status: "sent", detail: "Sent 12:27 PM", attempts: 1 },
   },
 ];

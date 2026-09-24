@@ -112,12 +112,10 @@ export const IconLeaf = ({ className }: P) => (
   </svg>
 );
 
-export const IconFax = ({ className }: P) => (
+export const IconMail = ({ className }: P) => (
   <svg {...base(className)}>
-    <path d="M7 9V4h10v5" />
-    <rect x="3" y="9" width="18" height="8" rx="1.5" />
-    <path d="M7 17v3h10v-3" />
-    <path d="M17.5 12.5h.01" />
+    <rect x="3" y="5" width="18" height="14" rx="1.5" />
+    <path d="m3.5 6.5 8.5 6.5 8.5-6.5" />
   </svg>
 );
 

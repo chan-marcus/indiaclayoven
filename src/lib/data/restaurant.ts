@@ -29,9 +29,9 @@ export const restaurant: Restaurant = {
       { days: "Sunday", time: "9:45am – 10:00pm" },
     ],
   },
-  fax: {
+  orderEmail: {
     enabled: true,
-    number: "(415) 751-0511",
+    address: "owner@indiaclayoven.com",
   },
   owner: {
     name: "Harpreet Singh",

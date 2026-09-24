@@ -3,7 +3,7 @@
 A high-fidelity **customer-approval prototype** for India Clay Oven Restaurant & Bar,
 2436 Clement Street, San Francisco.
 
-It is a working front end, not the production application: no real payments, fax,
+It is a working front end, not the production application: no real payments,
 authentication or email. Everything else — browsing, ordering, checkout, the owner
 dashboard — behaves for real.
 
@@ -28,7 +28,7 @@ npm run dev     # http://localhost:3000
 
 **1. Customer → owner.** Add dishes on `/menu`, check out, then open
 `/dashboard/orders`. Your order is at the top of the board, marked *New*, with the
-fax status beside it.
+order-email status beside it.
 
 **2. Owner → customer.** In `/dashboard/menu`, toggle a dish to *Sold out*. Go to
 `/menu`: it is greyed out, labelled **Sold Out**, and cannot be added to the cart.
@@ -85,7 +85,7 @@ launch; the file names describe the dish, so it is a like-for-like swap.
 
 ## Not built (by design)
 
-Real Stripe payments · Telnyx fax delivery · authentication · email · reservation
+Real Stripe payments · order email delivery · authentication · reservation
 integration · analytics · multi-restaurant admin. The brief excludes all of these
-from the prototype. The fax concept is shown as status and a **Retry Fax** control in
-the dashboard, which is what the owner needs to understand.
+from the prototype. Order email is shown as a delivery status and a **Resend Email** control
+in the dashboard, which is what the owner needs to understand.

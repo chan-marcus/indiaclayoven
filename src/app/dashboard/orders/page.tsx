@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useDashboard } from "@/lib/restaurant-data";
 import { currency, timeOfDay, dayAndTime } from "@/lib/format";
 import { RelativeTime } from "@/components/dashboard/RelativeTime";
-import { FaxStatus } from "@/components/dashboard/FaxStatus";
+import { EmailStatus } from "@/components/dashboard/EmailStatus";
 import type { Order, OrderStatus } from "@/lib/types";
 import { IconClose } from "@/components/ui/icons";
 
@@ -151,13 +151,13 @@ export default function OrdersPage() {
                 </div>
               </section>
 
-              {/* Fax */}
+              {/* Order email */}
               <section>
                 <h3 className="text-[0.6875rem] font-medium tracking-[0.14em] text-ink-400 uppercase">
-                  Fax delivery
+                  Order email
                 </h3>
                 <div className="mt-2.5">
-                  <FaxStatus order={current} />
+                  <EmailStatus order={current} />
                 </div>
               </section>
 
