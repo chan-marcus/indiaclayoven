@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Order } from "@/lib/types";
 import { loadOrder } from "@/lib/order-store";
-import { currency, timeOfDay, dayAndTime } from "@/lib/format";
+import { currency, timeOfDay, dayAndTime, deliveryAddress } from "@/lib/format";
 import { fullAddress, mapsUrl, telHref } from "@/lib/restaurant";
 import { useRestaurantData } from "@/lib/restaurant-data";
 import { IconCheck, IconPhone, IconPin } from "@/components/ui/icons";
@@ -87,7 +87,7 @@ export function Confirmation() {
                     <span className="text-ink-500">{fullAddress(restaurant)}</span>
                   </>
                 ) : (
-                  order.customer.address
+                  deliveryAddress(order.customer)
                 )}
               </dd>
             </div>

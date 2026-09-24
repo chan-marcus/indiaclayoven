@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
-import { currency, timeOfDay, dayAndTime } from "@/lib/format";
+import { currency, timeOfDay, dayAndTime, deliveryAddress } from "@/lib/format";
 import { RelativeTime } from "@/components/dashboard/RelativeTime";
 import { EmailStatus } from "@/components/dashboard/EmailStatus";
 import type { Order, OrderStatus } from "@/lib/types";
@@ -186,7 +186,12 @@ export default function OrdersPage() {
                   {current.customer.address && (
                     <div className="flex justify-between gap-4">
                       <dt className="shrink-0 text-ink-500">Address</dt>
-                      <dd className="text-right">{current.customer.address}</dd>
+                      <dd className="text-right">
+                        {deliveryAddress(current.customer)}
+                        {current.customer.crossStreet && (
+                          <span className="block text-ink-500">Near {current.customer.crossStreet}</span>
+                        )}
+                      </dd>
                     </div>
                   )}
                   <div className="flex justify-between gap-4">

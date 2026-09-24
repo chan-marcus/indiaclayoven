@@ -31,6 +31,28 @@ function useTimeSlots() {
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
+/** "2026-05-24" + "7:30 PM" as a real instant in the customer's time zone. */
+function scheduledAt(date: string, slot: string) {
+  const [, h, m, pm] = slot.match(/(\d+):(\d+)\s*(PM)?/i) ?? [];
+  const d = new Date(`${date}T00:00:00`);
+  d.setHours((Number(h) % 12) + (pm ? 12 : 0), Number(m));
+  return d.toISOString();
+}
+
+function cardBrand(digits: string) {
+  if (/^4/.test(digits)) return "Visa";
+  if (/^(5[1-5]|2[2-7])/.test(digits)) return "Mastercard";
+  if (/^3[47]/.test(digits)) return "Amex";
+  if (/^6/.test(digits)) return "Discover";
+  return "Card";
+}
+
+/** "0629", "6/29" or "06/2029" as "06/29". */
+function normalExpiry(v: string) {
+  const [, mm, yy] = v.replace(/\s/g, "").match(/^(\d{1,2})\/?(\d{2}|\d{4})$/) ?? [];
+  return mm ? `${mm.padStart(2, "0")}/${yy.slice(-2)}` : "";
+}
+
 export function CheckoutForm() {
   const router = useRouter();
   const { lines, subtotal, tax, total, deliveryFee, clear, count } = useCart();
@@ -46,13 +68,17 @@ export function CheckoutForm() {
     phone: "",
     email: "",
     address: "",
+    apt: "",
+    city: "",
+    zip: "",
+    crossStreet: "",
     date: todayISO(),
     time: slots[0] ?? "",
     notes: "",
     card: "",
     expiry: "",
     cvc: "",
-    zip: "",
+    billingZip: "",
   });
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -68,8 +94,10 @@ export function CheckoutForm() {
     if (!form.email.trim()) e.email = "Add an email for your receipt.";
     else if (!/^\S+@\S+\.\S+$/.test(form.email)) e.email = "That email does not look right.";
     if (isDelivery && !form.address.trim()) e.address = "Where are we delivering to?";
-    if (!form.card.trim()) e.card = "Enter a card number.";
-    if (!form.expiry.trim()) e.expiry = "Required.";
+    if (isDelivery && !form.city.trim()) e.city = "Required.";
+    if (isDelivery && !form.zip.trim()) e.zip = "Required.";
+    if (form.card.replace(/\D/g, "").length < 12) e.card = "Enter a card number.";
+    if (!normalExpiry(form.expiry)) e.expiry = "Use MM/YY.";
     if (!form.cvc.trim()) e.cvc = "Required.";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -89,10 +117,8 @@ export function CheckoutForm() {
     const requestedFor =
       timing === "asap"
         ? new Date(Date.now() + (isDelivery ? 45 : 25) * 60_000).toISOString()
-        : new Date(`${form.date}T00:00:00`).toISOString();
-    const notes = [form.notes.trim(), timing === "scheduled" ? `Scheduled for ${form.time}` : ""]
-      .filter(Boolean)
-      .join(" · ");
+        : scheduledAt(form.date, form.time);
+    const digits = form.card.replace(/\D/g, "");
 
     try {
       // Payment is still simulated; the order itself is saved for real.
@@ -102,13 +128,26 @@ export function CheckoutForm() {
           name: form.name.trim(),
           phone: form.phone.trim(),
           email: form.email.trim(),
-          address: isDelivery ? form.address.trim() : undefined,
+          ...(isDelivery && {
+            address: form.address.trim(),
+            apt: form.apt.trim(),
+            city: form.city.trim(),
+            zip: form.zip.trim(),
+            crossStreet: form.crossStreet.trim(),
+          }),
+        },
+        // Only this summary leaves the browser. The full number and CVC never do.
+        payment: {
+          brand: cardBrand(digits),
+          last4: digits.slice(-4),
+          expiry: normalExpiry(form.expiry),
+          billingZip: form.billingZip.trim(),
         },
         type,
         timing,
         requestedFor,
           items: lines.map((l) => ({ itemId: l.itemId, quantity: l.quantity, notes: l.notes })),
-          notes,
+          notes: form.notes.trim(),
         }),
       );
       saveOrder(order);
@@ -208,13 +247,41 @@ export function CheckoutForm() {
                 {err("email")}
               </div>
               {isDelivery && (
-                <div className="sm:col-span-2">
-                  <label htmlFor="address" className="field-label">
-                    Delivery address
-                  </label>
-                  <input id="address" value={form.address} onChange={set("address")} className="field-input" autoComplete="street-address" placeholder="Street, apartment, city" />
-                  {err("address")}
-                </div>
+                <>
+                  <div>
+                    <label htmlFor="address" className="field-label">
+                      Street address
+                    </label>
+                    <input id="address" value={form.address} onChange={set("address")} className="field-input" autoComplete="address-line1" placeholder="1255 Taraval St" />
+                    {err("address")}
+                  </div>
+                  <div>
+                    <label htmlFor="apt" className="field-label">
+                      Apt / unit <span className="normal-case">(optional)</span>
+                    </label>
+                    <input id="apt" value={form.apt} onChange={set("apt")} className="field-input" autoComplete="address-line2" />
+                  </div>
+                  <div>
+                    <label htmlFor="city" className="field-label">
+                      City
+                    </label>
+                    <input id="city" value={form.city} onChange={set("city")} className="field-input" autoComplete="address-level2" placeholder="San Francisco" />
+                    {err("city")}
+                  </div>
+                  <div>
+                    <label htmlFor="zip" className="field-label">
+                      ZIP
+                    </label>
+                    <input id="zip" value={form.zip} onChange={set("zip")} className="field-input" inputMode="numeric" autoComplete="postal-code" placeholder="94116" />
+                    {err("zip")}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="crossStreet" className="field-label">
+                      Cross street <span className="normal-case">(optional)</span>
+                    </label>
+                    <input id="crossStreet" value={form.crossStreet} onChange={set("crossStreet")} className="field-input" placeholder="23rd Ave" />
+                  </div>
+                </>
               )}
             </div>
           </section>
@@ -313,18 +380,18 @@ export function CheckoutForm() {
                     {err("cvc")}
                   </div>
                   <div>
-                    <label htmlFor="zip" className="field-label">
-                      ZIP
+                    <label htmlFor="billingZip" className="field-label">
+                      Billing ZIP
                     </label>
-                    <input id="zip" value={form.zip} onChange={set("zip")} className="field-input" placeholder="94121" />
+                    <input id="billingZip" value={form.billingZip} onChange={set("billingZip")} className="field-input" inputMode="numeric" placeholder="94121" />
                   </div>
                 </div>
               </div>
 
               <p className="mt-4 flex items-start gap-2 border-t border-cream-200 pt-4 text-xs leading-relaxed text-ink-500">
                 <IconLock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                This is an approval prototype. No card is charged and no details are stored or
-                sent anywhere.
+                No card is charged yet. The restaurant only sees your card type, last four digits,
+                expiry and billing ZIP; the full number and security code never leave this page.
               </p>
             </div>
           </section>

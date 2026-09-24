@@ -98,6 +98,14 @@ export interface OrderItem {
   notes?: string;
 }
 
+export interface OrderPayment {
+  brand: string;
+  last4: string;
+  /** MM/YY */
+  expiry: string;
+  billingZip?: string;
+}
+
 export interface Order {
   id: ID;
   restaurantId: ID;
@@ -107,8 +115,18 @@ export interface Order {
     name: string;
     phone: string;
     email: string;
+    /** Delivery orders only: street, then the parts the driver needs. */
     address?: string;
+    apt?: string;
+    city?: string;
+    zip?: string;
+    crossStreet?: string;
   };
+  /**
+   * What the kitchen sees of the card. Never the full number or the CVC:
+   * those stay in the browser.
+   */
+  payment?: OrderPayment;
   type: OrderType;
   timing: OrderTiming;
   requestedFor: string;

@@ -1,3 +1,11 @@
+import type { Order } from "@/lib/types";
+
+/** "1255 Taraval St, Apt 304, San Francisco 94115" for a delivery order. */
+export const deliveryAddress = ({ address, apt, city, zip }: Order["customer"]) =>
+  address
+    ? [address, apt && `Apt ${apt}`, [city, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")
+    : "";
+
 export const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 

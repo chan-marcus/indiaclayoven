@@ -30,6 +30,7 @@ import type {
   Category,
   MenuItem,
   Order,
+  OrderPayment,
   OrderStatus,
   OrderTiming,
   OrderType,
@@ -227,7 +228,8 @@ export async function createCategory(name: string): Promise<ActionResult<Categor
 /* ------------------------------------------------------------------ */
 
 export type PlaceOrderInput = {
-  customer: { name: string; phone: string; email: string; address?: string };
+  customer: Order["customer"];
+  payment: OrderPayment;
   type: OrderType;
   timing: OrderTiming;
   requestedFor: string;
@@ -273,6 +275,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
     const deliveryFee = isDelivery ? restaurant.deliveryFee : 0;
 
     const email = emailAddress(input.customer?.email, "Your email");
+    const c = input.customer;
 
     const row = check<OrderRow>(
       await supabase
@@ -284,8 +287,15 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
             name: text(input.customer?.name, "Name", 120),
             phone: text(input.customer?.phone, "Phone", 40),
             email,
-            address: isDelivery ? text(input.customer?.address, "Delivery address", 300) : undefined,
+            ...(isDelivery && {
+              address: text(c?.address, "Delivery address", 200),
+              apt: optionalText(c?.apt, "Apartment", 40) ?? undefined,
+              city: text(c?.city, "City", 80),
+              zip: text(c?.zip, "ZIP", 10),
+              crossStreet: optionalText(c?.crossStreet, "Cross street", 120) ?? undefined,
+            }),
           },
+          payment: cardSummary(input.payment),
           type: input.type,
           timing: input.timing,
           requested_for: requestedFor.toISOString(),
@@ -332,6 +342,23 @@ export async function setOrderStatus(id: string, status: OrderStatus): Promise<A
       "update the order",
     );
   });
+}
+
+/**
+ * Only the masked summary is accepted. The checkout never sends the full card
+ * number or CVC, and anything shaped like one is rejected rather than stored.
+ */
+function cardSummary(p: OrderPayment | undefined): OrderPayment {
+  const last4 = String(p?.last4 ?? "");
+  const expiry = String(p?.expiry ?? "");
+  if (!/^\d{4}$/.test(last4)) throw new InputError("Invalid card");
+  if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) throw new InputError("Card expiry must be MM/YY");
+  return {
+    brand: text(p?.brand, "Card type", 20),
+    last4,
+    expiry,
+    billingZip: optionalText(p?.billingZip, "Billing ZIP", 10) ?? undefined,
+  };
 }
 
 const emailsOn = (r: Restaurant) => r.orderEmail.enabled && r.orderEmail.addresses.length > 0;

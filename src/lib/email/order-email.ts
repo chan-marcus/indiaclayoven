@@ -13,87 +13,86 @@ const esc = (s: string) =>
 
 const money = (n: number) => `$${n.toFixed(2)}`;
 
-const localTime = (iso: string, opts: Intl.DateTimeFormatOptions) =>
-  new Date(iso).toLocaleString("en-US", { timeZone: RESTAURANT_TIME_ZONE, ...opts });
-
-function whenLine(order: Order) {
-  if (order.timing === "asap") {
-    return `As soon as possible, around ${localTime(order.requestedFor, { hour: "numeric", minute: "2-digit" })}`;
-  }
-  // Scheduled orders carry the chosen time in their notes ("Scheduled for 7:30 PM").
-  return `Scheduled for ${localTime(order.requestedFor, { weekday: "long", month: "long", day: "numeric" })}`;
+/** Date and time parts in the restaurant's zone, e.g. { year: "2026", hour: "05", ... }. */
+function localParts(iso: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: RESTAURANT_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }).formatToParts(new Date(iso));
+  const get = (t: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === t)?.value ?? "";
+  const hour = get("hour");
+  const pm = get("dayPeriod").toLowerCase() === "pm";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${hour}:${get("minute")}:${get("second")}${pm ? "pm" : "am"}`,
+    hour24: String((Number(hour) % 12) + (pm ? 12 : 0)).padStart(2, "0"),
+    minute: get("minute"),
+  };
 }
 
+const digits = (phone: string) => phone.replace(/\D/g, "") || phone;
+const RULE = "-".repeat(57);
+
+/*
+ * Kitchens print these, so the email is plain monospaced text in the layout
+ * the restaurant's old ordering system used: no color, nothing screen-only.
+ */
 export function buildOrderEmail(order: Order) {
   const kind = order.type === "pickup" ? "Pickup" : "Delivery";
   const subject = `New order #${order.number} · ${kind} · ${money(order.total)}`;
-  const placed = localTime(order.placedAt, { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" });
+  const { customer: c, payment } = order;
+  const placed = localParts(order.placedAt);
+  const wanted = localParts(order.requestedFor);
+  const phone = digits(c.phone);
 
-  // Kitchens print these, so the layout is black on white with no tints and
-  // nothing that only matters on screen.
-  const rows: [string, string][] = [
-    ["Placed", placed],
-    ["Wanted", whenLine(order)],
-    ["Customer", order.customer.name],
-    ["Phone", order.customer.phone],
-    ...(order.customer.address ? [["Deliver to", order.customer.address] as [string, string]] : []),
+  const lines = [
+    order.type === "pickup" ? "TAKE OUT ORDER" : "DELIVERY ORDER",
+    ...(order.timing === "scheduled"
+      ? [`REQUESTED TIME & DATE- ${wanted.date}T${wanted.hour24}:${wanted.minute}.`]
+      : []),
+    "",
+    `CALL ${phone} TO CONFIRM THIS ORDER.`,
+    `ORDER #${order.number} SENT AT:${placed.time} ON ${placed.date}`,
+    ...(payment
+      ? [
+          `PAYMENT METHOD: ${payment.brand}`,
+          `   CC#: XXXX XXXX XXXX ${payment.last4} Expires:${payment.expiry}`,
+          " CCIN-XXX",
+          ...(payment.billingZip ? [` Billing Zip Code-${payment.billingZip}`] : []),
+        ]
+      : []),
+    `NAME: ${c.name}`,
+    ...(c.address
+      ? [
+          `ADDRESS: ${c.address} APT: ${c.apt ?? ""}`,
+          `CITY/TOWN: ${c.city ?? ""}  ZIP- ${c.zip ?? ""}`,
+          ...(c.crossStreet ? [`X-STREET: ${c.crossStreet}`] : []),
+        ]
+      : []),
+    `PHONE: ${phone}  EMAIL: ${c.email}`,
+    ...(order.notes ? [`COMMENTS- ${order.notes}`] : []),
+    ...order.items.flatMap((i) => [
+      RULE,
+      `${String(i.quantity).padEnd(6)}${i.name}${i.notes ? `, ${i.notes}` : ""}, ${money(i.price * i.quantity)} @ ${money(i.price)}`,
+    ]),
+    "",
+    `Subtotal: ${money(order.subtotal)}`,
+    ...(order.deliveryFee > 0 ? [`Delivery Fee: ${money(order.deliveryFee)}`] : []),
+    `Sales Tax: ${money(order.tax)}`,
+    `TOTAL- ${money(order.total)}`,
   ];
 
-  const totals: [string, number][] = [
-    ["Subtotal", order.subtotal],
-    ...(order.deliveryFee > 0 ? [["Delivery", order.deliveryFee] as [string, number]] : []),
-    ["Tax", order.tax],
-  ];
-
-  const cell = "padding:3px 0;vertical-align:top;font-size:14px;";
-  const rule = "border-top:1px solid #000;";
+  const text = lines.join("\n");
   const html = `<!doctype html>
-<html><body style="margin:0;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#000;">
-<div style="max-width:560px;margin:0 auto;padding:16px;">
-  <h1 style="margin:0 0 10px;font-size:20px;">${kind} order #${order.number}</h1>
-
-  <table role="presentation" style="width:100%;border-collapse:collapse;margin-bottom:10px;">
-    ${rows
-      .map(([k, v]) => `<tr><td style="${cell}width:90px;">${k}</td><td style="${cell}">${esc(v)}</td></tr>`)
-      .join("\n    ")}
-  </table>
-
-  <table role="presentation" style="width:100%;border-collapse:collapse;${rule}">
-    ${order.items
-      .map(
-        (i) => `<tr>
-      <td style="${cell}"><strong>${i.quantity}×</strong> ${esc(i.name)}${i.notes ? `<br><em style="font-size:13px;">“${esc(i.notes)}”</em>` : ""}</td>
-      <td style="${cell}text-align:right;white-space:nowrap;">${money(i.price * i.quantity)}</td>
-    </tr>`,
-      )
-      .join("\n    ")}
-    ${totals
-      .map(
-        ([k, v], n) =>
-          `<tr><td style="${cell}${n === 0 ? rule : ""}">${k}</td><td style="${cell}${n === 0 ? rule : ""}text-align:right;">${money(v)}</td></tr>`,
-      )
-      .join("\n    ")}
-    <tr><td style="${cell}${rule}font-weight:bold;font-size:16px;">Total</td>
-        <td style="${cell}${rule}font-weight:bold;font-size:16px;text-align:right;">${money(order.total)}</td></tr>
-  </table>
-
-  ${order.notes ? `<p style="margin:10px 0 0;font-size:14px;"><strong>Kitchen note:</strong> ${esc(order.notes)}</p>` : ""}
-</div>
+<html><body style="margin:0;background:#fff;color:#000;">
+<pre style="margin:0;padding:16px;font-family:'Courier New',Courier,monospace;font-size:13px;line-height:1.4;white-space:pre-wrap;">${esc(text)}</pre>
 </body></html>`;
-
-  const text = [
-    `${kind} order #${order.number}`,
-    "",
-    ...rows.map(([k, v]) => `${k}: ${v}`),
-    "",
-    ...order.items.map(
-      (i) => `${i.quantity}x ${i.name}  ${money(i.price * i.quantity)}${i.notes ? `\n   "${i.notes}"` : ""}`,
-    ),
-    "",
-    ...totals.map(([k, v]) => `${k}: ${money(v)}`),
-    `Total: ${money(order.total)}`,
-    ...(order.notes ? ["", `Kitchen note: ${order.notes}`] : []),
-  ].join("\n");
 
   return { subject, html, text };
 }
