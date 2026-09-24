@@ -18,7 +18,7 @@ import { restaurant as seedRestaurant } from "@/lib/data/restaurant";
  * localStorage after hydration.
  */
 
-const STORAGE_KEY = "ico.data.v2";
+const STORAGE_KEY = "ico.data.v3";
 
 interface DataValue {
   items: MenuItem[];

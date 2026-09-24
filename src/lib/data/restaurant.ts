@@ -34,7 +34,7 @@ export const restaurant: Restaurant = {
     address: "owner@indiaclayoven.com",
   },
   owner: {
-    name: "Harpreet Singh",
+    name: "Jasprit Singh",
     email: "owner@indiaclayoven.com",
   },
   taxRate: 0.0863, // San Francisco
