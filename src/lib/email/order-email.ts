@@ -1,5 +1,6 @@
 import "server-only";
 import { RESTAURANT_TIME_ZONE } from "@/lib/restaurant";
+import type { FullCard } from "@/lib/prototype";
 import type { Order, Restaurant } from "@/lib/types";
 
 /*
@@ -42,8 +43,10 @@ const RULE = "-".repeat(57);
 /*
  * Kitchens print these, so the email is plain monospaced text in the layout
  * the restaurant's old ordering system used: no color, nothing screen-only.
+ * `card` is the prototype's full card (see lib/prototype). It only exists for
+ * the first send; a resend from the dashboard falls back to the masked card.
  */
-export function buildOrderEmail(order: Order) {
+export function buildOrderEmail(order: Order, card?: FullCard) {
   const kind = order.type === "pickup" ? "Pickup" : "Delivery";
   const subject = `New order #${order.number} · ${kind} · ${money(order.total)}`;
   const { customer: c, payment } = order;
@@ -62,8 +65,8 @@ export function buildOrderEmail(order: Order) {
     ...(payment
       ? [
           `PAYMENT METHOD: ${payment.brand}`,
-          `   CC#: XXXX XXXX XXXX ${payment.last4} Expires:${payment.expiry}`,
-          " CCIN-XXX",
+          `   CC#: ${card ? card.number.replace(/(\d{4})(?=\d)/g, "$1 ") : `XXXX XXXX XXXX ${payment.last4}`} Expires:${payment.expiry}`,
+          ` CCIN-${card?.cvc ?? "XXX"}`,
           ...(payment.billingZip ? [` Billing Zip Code-${payment.billingZip}`] : []),
         ]
       : []),
@@ -99,14 +102,14 @@ export function buildOrderEmail(order: Order) {
 
 export type SendResult = { ok: true } | { ok: false; reason: string };
 
-export async function sendOrderEmail(order: Order, restaurant: Restaurant): Promise<SendResult> {
+export async function sendOrderEmail(order: Order, restaurant: Restaurant, card?: FullCard): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return { ok: false, reason: "Email service not set up" };
 
   const to = restaurant.orderEmail.addresses;
   if (to.length === 0) return { ok: false, reason: "No address to send to" };
 
-  const { subject, html, text } = buildOrderEmail(order);
+  const { subject, html, text } = buildOrderEmail(order, card);
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

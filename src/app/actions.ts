@@ -26,6 +26,7 @@ import {
 } from "@/lib/db-rows";
 import type { ActionResult } from "@/lib/action-result";
 import { sendOrderEmail } from "@/lib/email/order-email";
+import { EMAIL_FULL_CARD, type FullCard } from "@/lib/prototype";
 import type {
   Category,
   MenuItem,
@@ -230,6 +231,8 @@ export async function createCategory(name: string): Promise<ActionResult<Categor
 export type PlaceOrderInput = {
   customer: Order["customer"];
   payment: OrderPayment;
+  /** Prototype only, see lib/prototype. Emailed, never saved. */
+  card?: FullCard;
   type: OrderType;
   timing: OrderTiming;
   requestedFor: string;
@@ -315,9 +318,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
       "place your order",
     );
     const order = orderFromRow(row);
+    const card = EMAIL_FULL_CARD ? fullCard(input.card) : undefined;
     // Email after the customer has their confirmation, so a slow or failing
     // email service never holds up or loses an order.
-    if (emailsOn(restaurant)) after(() => deliverOrderEmail(order, restaurant));
+    if (emailsOn(restaurant)) after(() => deliverOrderEmail(order, restaurant, card));
     return order;
   });
 }
@@ -344,10 +348,7 @@ export async function setOrderStatus(id: string, status: OrderStatus): Promise<A
   });
 }
 
-/**
- * Only the masked summary is accepted. The checkout never sends the full card
- * number or CVC, and anything shaped like one is rejected rather than stored.
- */
+/** The masked summary saved with the order. The full card is never stored. */
 function cardSummary(p: OrderPayment | undefined): OrderPayment {
   const last4 = String(p?.last4 ?? "");
   const expiry = String(p?.expiry ?? "");
@@ -361,11 +362,18 @@ function cardSummary(p: OrderPayment | undefined): OrderPayment {
   };
 }
 
+function fullCard(card: FullCard | undefined): FullCard | undefined {
+  const number = String(card?.number ?? "").replace(/\D/g, "");
+  const cvc = String(card?.cvc ?? "").replace(/\D/g, "");
+  if (!/^\d{12,19}$/.test(number) || !/^\d{3,4}$/.test(cvc)) return undefined;
+  return { number, cvc };
+}
+
 const emailsOn = (r: Restaurant) => r.orderEmail.enabled && r.orderEmail.addresses.length > 0;
 
 /** Sends the order email and records the outcome on the order. */
-async function deliverOrderEmail(order: Order, restaurant: Restaurant): Promise<Order> {
-  const result = await sendOrderEmail(order, restaurant);
+async function deliverOrderEmail(order: Order, restaurant: Restaurant, card?: FullCard): Promise<Order> {
+  const result = await sendOrderEmail(order, restaurant, card);
   const row = check<OrderRow>(
     await supabase
       .from("orders")

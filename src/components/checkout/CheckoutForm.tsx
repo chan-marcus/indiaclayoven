@@ -9,6 +9,7 @@ import { currency } from "@/lib/format";
 import { saveOrder } from "@/lib/order-store";
 import { placeOrder } from "@/app/actions";
 import { unwrap } from "@/lib/action-result";
+import { EMAIL_FULL_CARD } from "@/lib/prototype";
 import type { OrderTiming, OrderType } from "@/lib/types";
 import { IconBag, IconCheck, IconLock } from "@/components/ui/icons";
 
@@ -136,13 +137,15 @@ export function CheckoutForm() {
             crossStreet: form.crossStreet.trim(),
           }),
         },
-        // Only this summary leaves the browser. The full number and CVC never do.
+        // Only this summary is saved. The full card is sent only in the
+        // prototype, for the order email.
         payment: {
           brand: cardBrand(digits),
           last4: digits.slice(-4),
           expiry: normalExpiry(form.expiry),
           billingZip: form.billingZip.trim(),
         },
+        ...(EMAIL_FULL_CARD && { card: { number: digits, cvc: form.cvc.trim() } }),
         type,
         timing,
         requestedFor,
@@ -390,8 +393,9 @@ export function CheckoutForm() {
 
               <p className="mt-4 flex items-start gap-2 border-t border-cream-200 pt-4 text-xs leading-relaxed text-ink-500">
                 <IconLock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                No card is charged yet. The restaurant only sees your card type, last four digits,
-                expiry and billing ZIP; the full number and security code never leave this page.
+                {EMAIL_FULL_CARD
+                  ? "Prototype: no card is charged, and the full card number and security code are emailed to the restaurant with the order. Use a test card, never a real one."
+                  : "No card is charged yet. The restaurant only sees your card type, last four digits, expiry and billing ZIP; the full number and security code never leave this page."}
               </p>
             </div>
           </section>
