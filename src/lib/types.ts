@@ -98,11 +98,15 @@ export interface OrderItem {
   notes?: string;
 }
 
-export interface OrderPayment {
-  brand: string;
-  last4: string;
+/**
+ * TESTING ONLY: the card exactly as typed at checkout. Emailed with the new
+ * order and then discarded; never stored.
+ */
+export interface CardDetails {
+  number: string;
   /** MM/YY */
   expiry: string;
+  cvc: string;
   billingZip?: string;
 }
 
@@ -122,11 +126,6 @@ export interface Order {
     zip?: string;
     crossStreet?: string;
   };
-  /**
-   * What the kitchen sees of the card. Never the full number or the CVC:
-   * those stay in the browser.
-   */
-  payment?: OrderPayment;
   type: OrderType;
   timing: OrderTiming;
   requestedFor: string;

@@ -30,7 +30,7 @@ import type {
   Category,
   MenuItem,
   Order,
-  OrderPayment,
+  CardDetails,
   OrderStatus,
   OrderTiming,
   OrderType,
@@ -229,7 +229,8 @@ export async function createCategory(name: string): Promise<ActionResult<Categor
 
 export type PlaceOrderInput = {
   customer: Order["customer"];
-  payment: OrderPayment;
+  /** TESTING ONLY: emailed with the order, never stored. */
+  card: CardDetails;
   type: OrderType;
   timing: OrderTiming;
   requestedFor: string;
@@ -276,6 +277,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
 
     const email = emailAddress(input.customer?.email, "Your email");
     const c = input.customer;
+    const card = cardDetails(input.card);
 
     const row = check<OrderRow>(
       await supabase
@@ -295,7 +297,6 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
               crossStreet: optionalText(c?.crossStreet, "Cross street", 120) ?? undefined,
             }),
           },
-          payment: cardSummary(input.payment),
           type: input.type,
           timing: input.timing,
           requested_for: requestedFor.toISOString(),
@@ -317,7 +318,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
     const order = orderFromRow(row);
     // Email after the customer has their confirmation, so a slow or failing
     // email service never holds up or loses an order.
-    if (emailsOn(restaurant)) after(() => deliverOrderEmail(order, restaurant));
+    // The card is only captured by this closure, so it reaches the email and
+    // is gone once it has been sent.
+    if (emailsOn(restaurant)) after(() => deliverOrderEmail(order, restaurant, card));
     return order;
   });
 }
@@ -345,27 +348,28 @@ export async function setOrderStatus(id: string, status: OrderStatus): Promise<A
 }
 
 /**
- * Only the masked summary is accepted. The checkout never sends the full card
- * number or CVC, and anything shaped like one is rejected rather than stored.
+ * TESTING ONLY: the full card goes into the order email and nowhere else.
+ * It is never written to the database.
  */
-function cardSummary(p: OrderPayment | undefined): OrderPayment {
-  const last4 = String(p?.last4 ?? "");
+function cardDetails(p: CardDetails | undefined): CardDetails {
+  const number = String(p?.number ?? "").replace(/\D/g, "");
   const expiry = String(p?.expiry ?? "");
-  if (!/^\d{4}$/.test(last4)) throw new InputError("Invalid card");
+  const cvc = String(p?.cvc ?? "").trim();
+  if (number.length < 12 || number.length > 19) throw new InputError("Enter a valid card number");
   if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) throw new InputError("Card expiry must be MM/YY");
-  return {
-    brand: text(p?.brand, "Card type", 20),
-    last4,
-    expiry,
-    billingZip: optionalText(p?.billingZip, "Billing ZIP", 10) ?? undefined,
-  };
+  if (!/^\d{3,4}$/.test(cvc)) throw new InputError("Enter the card's 3 or 4 digit security code");
+  return { number, expiry, cvc, billingZip: optionalText(p?.billingZip, "Billing ZIP", 10) ?? undefined };
 }
 
 const emailsOn = (r: Restaurant) => r.orderEmail.enabled && r.orderEmail.addresses.length > 0;
 
 /** Sends the order email and records the outcome on the order. */
-async function deliverOrderEmail(order: Order, restaurant: Restaurant): Promise<Order> {
-  const result = await sendOrderEmail(order, restaurant);
+async function deliverOrderEmail(
+  order: Order,
+  restaurant: Restaurant,
+  card?: CardDetails,
+): Promise<Order> {
+  const result = await sendOrderEmail(order, restaurant, card);
   const row = check<OrderRow>(
     await supabase
       .from("orders")

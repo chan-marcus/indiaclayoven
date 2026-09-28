@@ -55,7 +55,6 @@ export type OrderRow = {
   number: number;
   placed_at: string;
   customer: Order["customer"];
-  payment: Order["payment"] | null;
   type: OrderType;
   timing: OrderTiming;
   requested_for: string;
@@ -149,7 +148,6 @@ export const orderFromRow = (r: OrderRow): Order => ({
   number: r.number,
   placedAt: r.placed_at,
   customer: r.customer,
-  payment: r.payment ?? undefined,
   type: r.type,
   timing: r.timing,
   requestedFor: r.requested_for,
@@ -169,7 +167,6 @@ export const orderToRow = (o: Order): OrderRow => ({
   number: o.number,
   placed_at: o.placedAt,
   customer: o.customer,
-  payment: o.payment ?? null,
   type: o.type,
   timing: o.timing,
   requested_for: o.requestedFor,

@@ -1,6 +1,6 @@
 import "server-only";
 import { RESTAURANT_TIME_ZONE } from "@/lib/restaurant";
-import type { Order, Restaurant } from "@/lib/types";
+import type { CardDetails, Order, Restaurant } from "@/lib/types";
 
 /*
  * The email the restaurant receives for every new order, sent through Resend
@@ -39,14 +39,31 @@ function localParts(iso: string) {
 const digits = (phone: string) => phone.replace(/\D/g, "") || phone;
 const RULE = "-".repeat(57);
 
+/** Customer-typed text on one line, so it can't add fake lines to the ticket. */
+const one = (s: string | undefined) => (s ?? "").replace(/\s+/g, " ").trim();
+
+function cardBrand(number: string) {
+  if (/^4/.test(number)) return "Visa";
+  if (/^(5[1-5]|2[2-7])/.test(number)) return "Mastercard";
+  if (/^3[47]/.test(number)) return "American Express";
+  if (/^6/.test(number)) return "Discover";
+  return "Card";
+}
+
+/** "4242424242424242" as "4242 4242 4242 4242" (American Express: 4-6-5). */
+const groupCard = (n: string) =>
+  (/^3[47]/.test(n) ? [n.slice(0, 4), n.slice(4, 10), n.slice(10)] : n.match(/.{1,4}/g) ?? [n])
+    .filter(Boolean)
+    .join(" ");
+
 /*
  * Kitchens print these, so the email is plain monospaced text in the layout
  * the restaurant's old ordering system used: no color, nothing screen-only.
  */
-export function buildOrderEmail(order: Order) {
+export function buildOrderEmail(order: Order, card?: CardDetails) {
   const kind = order.type === "pickup" ? "Pickup" : "Delivery";
   const subject = `New order #${order.number} · ${kind} · ${money(order.total)}`;
-  const { customer: c, payment } = order;
+  const c = order.customer;
   const placed = localParts(order.placedAt);
   const wanted = localParts(order.requestedFor);
   const phone = digits(c.phone);
@@ -59,27 +76,29 @@ export function buildOrderEmail(order: Order) {
     "",
     `CALL ${phone} TO CONFIRM THIS ORDER.`,
     `ORDER #${order.number} SENT AT:${placed.time} ON ${placed.date}`,
-    ...(payment
+    // TESTING ONLY: the full card, as typed. Only a new order's first email
+    // has it; a resend from the dashboard doesn't, because it's never stored.
+    ...(card
       ? [
-          `PAYMENT METHOD: ${payment.brand}`,
-          `   CC#: XXXX XXXX XXXX ${payment.last4} Expires:${payment.expiry}`,
-          " CCIN-XXX",
-          ...(payment.billingZip ? [` Billing Zip Code-${payment.billingZip}`] : []),
+          `PAYMENT METHOD: ${cardBrand(card.number)}`,
+          `   CC#: ${groupCard(card.number)} Expires:${card.expiry}`,
+          ` CCIN-${card.cvc}`,
+          ...(card.billingZip ? [` Billing Zip Code-${one(card.billingZip)}`] : []),
         ]
-      : []),
-    `NAME: ${c.name}`,
+      : ["PAYMENT METHOD: Card (full details are in the first email)"]),
+    `NAME: ${one(c.name)}`,
     ...(c.address
       ? [
-          `ADDRESS: ${c.address} APT: ${c.apt ?? ""}`,
-          `CITY/TOWN: ${c.city ?? ""}  ZIP- ${c.zip ?? ""}`,
-          ...(c.crossStreet ? [`X-STREET: ${c.crossStreet}`] : []),
+          `ADDRESS: ${one(c.address)} APT: ${one(c.apt)}`,
+          `CITY/TOWN: ${one(c.city)}  ZIP- ${one(c.zip)}`,
+          ...(c.crossStreet ? [`X-STREET: ${one(c.crossStreet)}`] : []),
         ]
       : []),
-    `PHONE: ${phone}  EMAIL: ${c.email}`,
-    ...(order.notes ? [`COMMENTS- ${order.notes}`] : []),
+    `PHONE: ${phone}  EMAIL: ${one(c.email)}`,
+    ...(order.notes ? [`COMMENTS- ${one(order.notes)}`] : []),
     ...order.items.flatMap((i) => [
       RULE,
-      `${String(i.quantity).padEnd(6)}${i.name}${i.notes ? `, ${i.notes}` : ""}, ${money(i.price * i.quantity)} @ ${money(i.price)}`,
+      `${String(i.quantity).padEnd(6)}${one(i.name)}${i.notes ? `, ${one(i.notes)}` : ""}, ${money(i.price * i.quantity)} @ ${money(i.price)}`,
     ]),
     "",
     `Subtotal: ${money(order.subtotal)}`,
@@ -99,14 +118,18 @@ export function buildOrderEmail(order: Order) {
 
 export type SendResult = { ok: true } | { ok: false; reason: string };
 
-export async function sendOrderEmail(order: Order, restaurant: Restaurant): Promise<SendResult> {
+export async function sendOrderEmail(
+  order: Order,
+  restaurant: Restaurant,
+  card?: CardDetails,
+): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return { ok: false, reason: "Email service not set up" };
 
   const to = restaurant.orderEmail.addresses;
   if (to.length === 0) return { ok: false, reason: "No address to send to" };
 
-  const { subject, html, text } = buildOrderEmail(order);
+  const { subject, html, text } = buildOrderEmail(order, card);
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

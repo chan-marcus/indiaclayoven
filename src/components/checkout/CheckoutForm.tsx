@@ -39,14 +39,6 @@ function scheduledAt(date: string, slot: string) {
   return d.toISOString();
 }
 
-function cardBrand(digits: string) {
-  if (/^4/.test(digits)) return "Visa";
-  if (/^(5[1-5]|2[2-7])/.test(digits)) return "Mastercard";
-  if (/^3[47]/.test(digits)) return "Amex";
-  if (/^6/.test(digits)) return "Discover";
-  return "Card";
-}
-
 /** "0629", "6/29" or "06/2029" as "06/29". */
 function normalExpiry(v: string) {
   const [, mm, yy] = v.replace(/\s/g, "").match(/^(\d{1,2})\/?(\d{2}|\d{4})$/) ?? [];
@@ -118,7 +110,6 @@ export function CheckoutForm() {
       timing === "asap"
         ? new Date(Date.now() + (isDelivery ? 45 : 25) * 60_000).toISOString()
         : scheduledAt(form.date, form.time);
-    const digits = form.card.replace(/\D/g, "");
 
     try {
       // Payment is still simulated; the order itself is saved for real.
@@ -136,11 +127,11 @@ export function CheckoutForm() {
             crossStreet: form.crossStreet.trim(),
           }),
         },
-        // Only this summary leaves the browser. The full number and CVC never do.
-        payment: {
-          brand: cardBrand(digits),
-          last4: digits.slice(-4),
+        // TESTING ONLY: the full card goes into the order email. It isn't stored.
+        card: {
+          number: form.card,
           expiry: normalExpiry(form.expiry),
+          cvc: form.cvc.trim(),
           billingZip: form.billingZip.trim(),
         },
         type,
@@ -388,11 +379,6 @@ export function CheckoutForm() {
                 </div>
               </div>
 
-              <p className="mt-4 flex items-start gap-2 border-t border-cream-200 pt-4 text-xs leading-relaxed text-ink-500">
-                <IconLock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                No card is charged yet. The restaurant only sees your card type, last four digits,
-                expiry and billing ZIP; the full number and security code never leave this page.
-              </p>
             </div>
           </section>
         </div>
