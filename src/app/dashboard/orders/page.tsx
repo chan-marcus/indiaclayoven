@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
-import { currency, timeOfDay, dayAndTime, deliveryAddress } from "@/lib/format";
+import { currency, timeOfDay, dayAndTime, deliveryAddress, orderNo } from "@/lib/format";
 import { RelativeTime } from "@/components/dashboard/RelativeTime";
 import { EmailStatus } from "@/components/dashboard/EmailStatus";
 import type { Order, OrderStatus } from "@/lib/types";
@@ -74,7 +74,7 @@ export default function OrdersPage() {
               onClick={() => setOpen(o)}
               className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 p-4 text-left transition-colors hover:bg-cream-100/60 lg:grid lg:grid-cols-[6rem_1fr_7rem_7rem_6rem_9rem]"
             >
-              <span className="font-display text-lg tabular-nums">#{o.number}</span>
+              <span className="font-display text-lg tabular-nums">{orderNo(o.number)}</span>
               <span className="text-[0.9375rem]">{o.customer.name}</span>
               <span className="text-[0.8125rem] text-ink-500"><RelativeTime iso={o.placedAt} /></span>
               <span className="text-[0.8125rem] text-ink-500 capitalize">{o.type}</span>
@@ -101,7 +101,7 @@ export default function OrdersPage() {
 
       {/* Detail drawer */}
       {current && (
-        <div className="fixed inset-0 z-70" role="dialog" aria-modal="true" aria-label={`Order ${current.number}`}>
+        <div className="fixed inset-0 z-70" role="dialog" aria-modal="true" aria-label={`Order ${orderNo(current.number)}`}>
           <button
             type="button"
             aria-label="Close"
@@ -111,7 +111,7 @@ export default function OrdersPage() {
           <div className="absolute inset-y-0 right-0 flex w-[min(30rem,100vw)] animate-slide-in-right flex-col bg-cream shadow-2xl">
             <div className="flex items-center justify-between border-b border-cream-300 px-5 py-4">
               <div>
-                <p className="font-display text-2xl tabular-nums">#{current.number}</p>
+                <p className="font-display text-2xl tabular-nums">{orderNo(current.number)}</p>
                 <p className="text-[0.8125rem] text-ink-500">
                   Placed <RelativeTime iso={current.placedAt} /> · {timeOfDay(current.placedAt)}
                 </p>

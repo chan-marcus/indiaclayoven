@@ -6,6 +6,9 @@ export const deliveryAddress = ({ address, apt, city, zip }: Order["customer"]) 
     ? [address, apt && `Apt ${apt}`, [city, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")
     : "";
 
+/** Order numbers read as "#00001". */
+export const orderNo = (n: number) => `#${String(n).padStart(5, "0")}`;
+
 export const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 

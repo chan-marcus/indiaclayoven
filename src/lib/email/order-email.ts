@@ -1,4 +1,5 @@
 import "server-only";
+import { orderNo } from "@/lib/format";
 import { RESTAURANT_TIME_ZONE } from "@/lib/restaurant";
 import type { CardDetails, Order, Restaurant } from "@/lib/types";
 
@@ -62,7 +63,7 @@ const groupCard = (n: string) =>
  */
 export function buildOrderEmail(order: Order, card?: CardDetails) {
   const kind = order.type === "pickup" ? "Pickup" : "Delivery";
-  const subject = `New order #${order.number} · ${kind} · ${money(order.total)}`;
+  const subject = `New order ${orderNo(order.number)} · ${kind} · ${money(order.total)}`;
   const c = order.customer;
   const placed = localParts(order.placedAt);
   const wanted = localParts(order.requestedFor);
@@ -75,7 +76,7 @@ export function buildOrderEmail(order: Order, card?: CardDetails) {
       : []),
     "",
     `CALL ${phone} TO CONFIRM THIS ORDER.`,
-    `ORDER #${order.number} SENT AT:${placed.time} ON ${placed.date}`,
+    `ORDER ${orderNo(order.number)} SENT AT:${placed.time} ON ${placed.date}`,
     // TESTING ONLY: the full card, as typed. Only a new order's first email
     // has it; a resend from the dashboard doesn't, because it's never stored.
     ...(card

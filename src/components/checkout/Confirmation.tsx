@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Order } from "@/lib/types";
 import { loadOrder } from "@/lib/order-store";
-import { currency, timeOfDay, dayAndTime, deliveryAddress } from "@/lib/format";
+import { currency, timeOfDay, dayAndTime, deliveryAddress, orderNo } from "@/lib/format";
 import { fullAddress, mapsUrl, telHref } from "@/lib/restaurant";
 import { useRestaurantData } from "@/lib/restaurant-data";
 import { IconCheck, IconPhone, IconPin } from "@/components/ui/icons";
@@ -66,7 +66,7 @@ export function Confirmation() {
               <p className="text-[0.6875rem] tracking-[0.16em] text-ink-400 uppercase">
                 Order number
               </p>
-              <p className="mt-1 font-display text-2xl tabular-nums">#{order.number}</p>
+              <p className="mt-1 font-display text-2xl tabular-nums">{orderNo(order.number)}</p>
             </div>
             <span className="rounded-xs border border-success/30 bg-success/10 px-2.5 py-1 text-[0.6875rem] font-medium tracking-[0.09em] text-success uppercase">
               Confirmed
@@ -163,7 +163,7 @@ export function Confirmation() {
         <div className="mt-8 rounded-sm border border-cream-200 bg-cream-100/60 p-6">
           <h2 className="font-display text-lg">Questions about your order?</h2>
           <p className="mt-1.5 text-sm text-ink-500">
-            Call us and quote order #{order.number} and we will pull it up.
+            Call us and quote order {orderNo(order.number)} and we will pull it up.
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <a href={telHref(restaurant)} className="btn btn-primary btn-sm">

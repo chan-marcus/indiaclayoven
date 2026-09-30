@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useDashboard } from "@/lib/dashboard-data";
-import { currency } from "@/lib/format";
+import { currency, orderNo } from "@/lib/format";
 import { RelativeTime } from "@/components/dashboard/RelativeTime";
 import { EmailStatus } from "@/components/dashboard/EmailStatus";
 import { IconArrowRight } from "@/components/ui/icons";
@@ -49,7 +49,7 @@ export default function OverviewPage() {
             {emailTrouble.map((o) => (
               <div key={o.id} className="rounded-sm border border-cream-300 bg-white p-4">
                 <p className="mb-2.5 text-[0.9375rem] font-medium">
-                  Order #{o.number} · {o.customer.name}
+                  Order {orderNo(o.number)} · {o.customer.name}
                 </p>
                 <EmailStatus order={o} />
               </div>
@@ -77,7 +77,7 @@ export default function OverviewPage() {
             href="/dashboard/orders"
             className="flex flex-wrap items-center gap-x-5 gap-y-2 p-4 transition-colors hover:bg-cream-100/60"
           >
-            <span className="font-display text-lg tabular-nums">#{o.number}</span>
+            <span className="font-display text-lg tabular-nums">{orderNo(o.number)}</span>
             <span className="text-[0.9375rem]">{o.customer.name}</span>
             <span className="text-[0.8125rem] text-ink-500 capitalize">{o.type}</span>
             <span className="text-[0.8125rem] text-ink-400"><RelativeTime iso={o.placedAt} /></span>
