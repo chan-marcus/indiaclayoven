@@ -31,7 +31,7 @@ SUPABASE_DB_URL=postgresql://…pooler.supabase.com:5432/postgres  # local only,
 
 ```bash
 supabase db push --db-url "$SUPABASE_DB_URL"   # apply supabase/migrations
-npm run db:seed                                # load the starting menu + demo orders (once)
+npm run db:seed                                # load the starting menu (once)
 ```
 
 ---
@@ -91,7 +91,7 @@ src/
     restaurant-data.tsx   menu + settings shared by BOTH surfaces
     dashboard-data.tsx    orders, loaded only inside /dashboard
     cart-context.tsx      cart, kept in the visitor's browser
-    seed/             starting data: the real menu (12 categories, ~100 dishes), demo orders
+    seed/             starting data: the real menu (12 categories, ~100 dishes)
   app/actions.ts      every database write (server actions)
 supabase/migrations/  database schema
 scripts/seed.ts       loads lib/seed into an empty database

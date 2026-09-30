@@ -10,7 +10,7 @@ import { saveOrder } from "@/lib/order-store";
 import { placeOrder } from "@/app/actions";
 import { unwrap } from "@/lib/action-result";
 import type { OrderTiming, OrderType } from "@/lib/types";
-import { IconBag, IconCheck, IconLock } from "@/components/ui/icons";
+import { IconBag, IconCheck } from "@/components/ui/icons";
 
 /** Next few half-hour slots, for "schedule for later". */
 function useTimeSlots() {
@@ -338,13 +338,7 @@ export function CheckoutForm() {
 
           {/* Payment */}
           <section>
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-2xl">Payment</h2>
-              <span className="inline-flex items-center gap-1.5 text-xs text-ink-500">
-                <IconLock className="h-4 w-4 text-success" />
-                Encrypted
-              </span>
-            </div>
+            <h2 className="font-display text-2xl">Payment</h2>
 
             <div className="mt-4 rounded-sm border border-cream-300 bg-white p-5">
               <div className="grid gap-4">

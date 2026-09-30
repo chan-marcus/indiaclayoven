@@ -1,5 +1,5 @@
 /**
- * Loads the starting data (restaurant, categories, menu, demo orders) into
+ * Loads the starting data (restaurant, categories, menu) into
  * Supabase. Run once after creating the tables:
  *
  *   npm run db:seed
@@ -10,8 +10,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { seedRestaurant } from "@/lib/seed/restaurant";
 import { seedCategories, seedMenuItems } from "@/lib/seed/menu";
-import { seedOrders } from "@/lib/seed/orders";
-import { categoryToRow, menuItemToRow, orderToRow, restaurantToRow } from "@/lib/db-rows";
+import { categoryToRow, menuItemToRow, restaurantToRow } from "@/lib/db-rows";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const secret = process.env.SUPABASE_SECRET_KEY;
@@ -40,7 +39,6 @@ async function main() {
   await step(`${seedMenuItems.length} menu items`, () =>
     db.from("menu_items").upsert(seedMenuItems.map(menuItemToRow)),
   );
-  await step(`${seedOrders.length} demo orders`, () => db.from("orders").upsert(seedOrders.map(orderToRow)));
 }
 
 main().catch((err) => {
