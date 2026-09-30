@@ -25,8 +25,10 @@ export async function FindUs() {
             Two blocks of Clement Street, one very old oven
           </h2>
           <p className="mt-5 max-w-md text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
-            We are on Clement between 25th and 26th Avenue, a short walk from Golden Gate Park.
-            Parking on the street is easiest before 6pm.
+            <span className="block">
+              We are on Clement between 25th and 26th Avenue, a short walk from Golden Gate Park.
+            </span>
+            <span className="block">Parking on the street is easiest before 6pm.</span>
           </p>
 
           <dl className="mt-9 space-y-5 border-t border-cream-200 pt-8">

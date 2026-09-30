@@ -102,7 +102,7 @@ export default async function AboutPage() {
                 </h3>
                 <p className="mt-5 text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
                   We are on Clement between 25th and 26th Avenue, in the middle of one of the best
-                  eating streets in San Francisco. Street parking is easiest before six. The full
+                  eating streets in San Francisco. Street parking is easiest before 6pm, and the full
                   bar is open through dinner.
                 </p>
               </div>
