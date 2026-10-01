@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Lines } from "@/components/ui/Lines";
 
 /**
  * Shared page masthead. Two flavours: a compact clay band (default) and an
@@ -30,7 +31,7 @@ export function PageHeader({
           <h1 className="display-lg mt-5 max-w-3xl text-balance text-cream">{title}</h1>
           {intro && (
             <p className="mt-5 max-w-xl text-[1.0625rem] leading-relaxed text-pretty text-cream/75">
-              {intro}
+              <Lines text={intro} />
             </p>
           )}
         </div>
@@ -45,7 +46,7 @@ export function PageHeader({
         <h1 className="display-lg mt-5 max-w-3xl text-balance text-cream">{title}</h1>
         {intro && (
           <p className="mt-5 max-w-xl text-[1.0625rem] leading-relaxed text-pretty text-cream/75">
-            {intro}
+            <Lines text={intro} />
           </p>
         )}
       </div>

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
 import { mapsUrl, telHref } from "@/lib/restaurant";
-import { getRestaurant } from "@/lib/db";
+import { getRestaurant, getSiteText } from "@/lib/db";
+import { fillText } from "@/lib/site-text";
+import { Lines } from "@/components/ui/Lines";
 import { IconArrowRight } from "@/components/ui/icons";
 
 export async function Footer() {
-  const restaurant = await getRestaurant();
+  const [restaurant, t] = await Promise.all([getRestaurant(), getSiteText()]);
   return (
     <footer className="mt-auto bg-clay-dark text-cream">
       <div className="container-page grid gap-12 py-16 md:grid-cols-2 md:py-20 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
@@ -13,10 +15,10 @@ export async function Footer() {
         <div>
           <Logo tone="light" />
           <p className="mt-5 max-w-xs font-display text-xl leading-snug text-cream/80 italic">
-            Experience the taste of India.
+            {t["footer.tagline"]}
           </p>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/55">
-            {restaurant.cuisine}. Charcoal-fired, on Clement Street.
+            <Lines text={fillText(t["footer.blurb"], restaurant)} />
           </p>
         </div>
 
@@ -102,7 +104,7 @@ export async function Footer() {
           className="group container-page flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between"
         >
           <span className="text-sm text-cream/70">
-            We are on Clement between 25th and 26th Avenue, a short walk from Golden Gate Park.
+            <Lines text={t["footer.directions"]} />
           </span>
           <span className="inline-flex items-center gap-2 text-[0.8125rem] font-medium whitespace-nowrap text-gold-bright">
             Open in Google Maps

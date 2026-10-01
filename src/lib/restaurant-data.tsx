@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState } from "react";
 import type { Category, MenuItem, Restaurant } from "@/lib/types";
+import type { SiteText } from "@/lib/site-text";
 import {
   createCategory,
   createMenuItem,
@@ -9,6 +10,7 @@ import {
   setItemAvailability,
   updateMenuItem,
   updateRestaurant,
+  updateSiteText,
 } from "@/app/actions";
 import { unwrap } from "@/lib/action-result";
 
@@ -28,6 +30,8 @@ export type PublicData = {
   settings: Restaurant;
   categories: Category[];
   items: MenuItem[];
+  /** Website wording, with the owner's edits. */
+  text: SiteText;
 };
 
 type ItemInput = Pick<MenuItem, "name" | "description" | "price" | "categoryId" | "available">;
@@ -40,6 +44,8 @@ interface DataValue extends PublicData {
   deleteItem: (id: string) => Promise<void>;
   addCategory: (name: string) => Promise<void>;
   updateSettings: (input: SettingsInput) => Promise<void>;
+  /** Rejects with the reason if the save fails. */
+  updateText: (changes: Record<string, string>) => Promise<void>;
 }
 
 const Ctx = createContext<DataValue | null>(null);
@@ -60,6 +66,7 @@ export function RestaurantDataProvider({
   const [settings, setSettings] = useState(initial.settings);
   const [categories, setCategories] = useState(initial.categories);
   const [items, setItems] = useState(initial.items);
+  const [text, setText] = useState(initial.text);
 
   // A server refresh (after any save) hands in fresh data; adopt it.
   const [seen, setSeen] = useState(initial);
@@ -68,6 +75,7 @@ export function RestaurantDataProvider({
     setSettings(initial.settings);
     setCategories(initial.categories);
     setItems(initial.items);
+    setText(initial.text);
   }
 
   const replaceItem = (item: MenuItem) =>
@@ -77,6 +85,7 @@ export function RestaurantDataProvider({
     settings,
     categories,
     items,
+    text,
 
     toggleAvailability: async (id) => {
       const before = items.find((i) => i.id === id);
@@ -130,6 +139,10 @@ export function RestaurantDataProvider({
     updateSettings: async (input) => {
       // Rethrown so the settings form can tell the owner it did not save.
       setSettings(unwrap(await updateRestaurant(input)));
+    },
+
+    updateText: async (changes) => {
+      setText(unwrap(await updateSiteText(changes)));
     },
   };
 

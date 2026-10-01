@@ -377,14 +377,13 @@ function ItemRow({
 }
 
 export function DietaryNote() {
+  const { text: t } = useRestaurantData();
   return (
     <div className="border-b border-cream-200 bg-gold-soft/35">
       <div className="container-page flex items-start gap-3 py-3.5">
         <IconLeaf className="mt-0.5 h-[1.125rem] w-[1.125rem] shrink-0 text-gold" />
         <p className="text-[0.875rem] leading-relaxed text-ink-700">
-          <span className="font-medium">Dietary options:</span> we can prepare most dishes gluten
-          free, vegan or dairy free. Add a note to your item or at checkout and the kitchen will
-          take care of it.
+          <span className="font-medium">{t["menu.dietary.label"]}</span> {t["menu.dietary.body"]}
         </p>
       </div>
     </div>

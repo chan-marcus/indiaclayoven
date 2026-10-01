@@ -1,8 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { IconArrowRight } from "@/components/ui/icons";
+import { getSiteText } from "@/lib/db";
+import { Lines } from "@/components/ui/Lines";
 
-export function Hero() {
+export async function Hero() {
+  const t = await getSiteText();
   return (
     <section className="relative isolate flex min-h-[38rem] items-end overflow-hidden bg-clay-dark lg:min-h-[calc(100vh-5rem)] lg:max-h-[52rem]">
       <Image
@@ -26,17 +29,16 @@ export function Hero() {
 
       <div className="container-page relative z-10 pt-28 pb-14 md:pb-20">
         <div className="max-w-2xl">
-          <p className="eyebrow eyebrow-rule eyebrow-on-dark">Clement Street · San Francisco</p>
+          <p className="eyebrow eyebrow-rule eyebrow-on-dark">{t["home.hero.eyebrow"]}</p>
 
           <h1 className="display-xl mt-6 text-cream">
-            Experience the
+            {t["home.hero.title1"]}
             <br />
-            <span className="text-gold-bright italic">Taste of India</span>
+            <span className="text-gold-bright italic">{t["home.hero.title2"]}</span>
           </h1>
 
           <p className="mt-6 max-w-lg text-[1.0625rem] leading-relaxed text-pretty text-cream/80">
-            Charcoal-fired clay oven cooking, hand-rolled breads and slow-simmered curries,
-            served in the Richmond District since the neighbourhood learned our name.
+            <Lines text={t["home.hero.intro"]} />
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">

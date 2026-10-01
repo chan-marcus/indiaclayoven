@@ -11,7 +11,8 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getMenuItems, getOrders, getRestaurant } from "@/lib/db";
+import { getMenuItems, getOrders, getRestaurant, getSiteText } from "@/lib/db";
+import { DEFAULT_TEXT, TEXT_FIELD, type SiteText, type TextKey } from "@/lib/site-text";
 import { RESTAURANT_ID, RESTAURANT_TIME_ZONE } from "@/lib/restaurant";
 import {
   categoryFromRow,
@@ -465,3 +466,41 @@ export async function updateRestaurant(input: SettingsInput): Promise<ActionResu
     return restaurantFromRow(row);
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* Website text (owner)                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Saves edited wording. A field saved blank, or back to its original wording,
+ * has its edit removed so the default shows again.
+ */
+export async function updateSiteText(changes: Record<string, string>): Promise<ActionResult<SiteText>> {
+  return run(async () => {
+    const save: { restaurant_id: string; key: string; value: string; updated_at: string }[] = [];
+    const reset: string[] = [];
+
+    for (const [key, raw] of Object.entries(changes ?? {})) {
+      const field = TEXT_FIELD.get(key);
+      if (!field) throw new InputError("Unknown text field");
+      if (typeof raw !== "string") throw new InputError(`${field.label} must be text`);
+      const lines = raw.split("\n").map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
+      const value = field.long ? lines.join("\n") : lines.join(" ");
+      if (value.length > (field.long ? 1500 : 200)) throw new InputError(`${field.label} is too long`);
+
+      if (!value || value === DEFAULT_TEXT[key as TextKey]) reset.push(key);
+      else save.push({ restaurant_id: RESTAURANT_ID, key, value, updated_at: new Date().toISOString() });
+    }
+
+    if (save.length) check(await supabase.from("site_content").upsert(save), "save the website text");
+    if (reset.length) {
+      check(
+        await supabase.from("site_content").delete().eq("restaurant_id", RESTAURANT_ID).in("key", reset),
+        "save the website text",
+      );
+    }
+    refreshSite();
+    return getSiteText();
+  });
+}
+

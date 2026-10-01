@@ -12,6 +12,7 @@ import {
   type OrderRow,
   type RestaurantRow,
 } from "@/lib/db-rows";
+import { mergeText } from "@/lib/site-text";
 
 type Result = { data: unknown; error: { message: string } | null };
 
@@ -52,4 +53,11 @@ export const getOrders = cache(async () => {
     .eq("restaurant_id", RESTAURANT_ID)
     .order("placed_at", { ascending: false });
   return rows<OrderRow[]>(res, "orders").map(orderFromRow);
+});
+
+/** Website wording: defaults with the owner's edits from Dashboard → Website text. */
+export const getSiteText = cache(async () => {
+  const res = await supabase.from("site_content").select("key, value").eq("restaurant_id", RESTAURANT_ID);
+  const saved = rows<{ key: string; value: string }[]>(res, "website text");
+  return mergeText(Object.fromEntries(saved.map((r) => [r.key, r.value])));
 });

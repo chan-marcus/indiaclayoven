@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { mapsUrl, telHref } from "@/lib/restaurant";
-import { getRestaurant } from "@/lib/db";
+import { getRestaurant, getSiteText } from "@/lib/db";
+import { Lines } from "@/components/ui/Lines";
 import { IconClock, IconLeaf, IconPhone, IconPin } from "@/components/ui/icons";
 
 /**
@@ -8,7 +9,7 @@ import { IconClock, IconLeaf, IconPhone, IconPin } from "@/components/ui/icons";
  * Answers "where", "when" and "how do I order" without competing with it.
  */
 export async function InfoBar() {
-  const restaurant = await getRestaurant();
+  const [restaurant, t] = await Promise.all([getRestaurant(), getSiteText()]);
   const cells = [
     {
       icon: IconPin,
@@ -25,13 +26,13 @@ export async function InfoBar() {
     {
       icon: IconPhone,
       label: "Call us",
-      lines: [restaurant.phone, "Reservations & takeout"],
+      lines: [restaurant.phone, t["home.info.call_note"]],
       href: telHref(restaurant),
     },
     {
       icon: IconLeaf,
       label: "Kitchen",
-      lines: [restaurant.cuisine, "Ask for gluten, dairy free or vegan"],
+      lines: [restaurant.cuisine, t["home.info.kitchen_note"]],
     },
   ];
 
@@ -87,23 +88,24 @@ export async function InfoBar() {
 }
 
 /** Slim strip of the three ways to eat with us. */
-export function WaysToOrder() {
+export async function WaysToOrder() {
+  const t = await getSiteText();
   const ways = [
     {
-      title: "Order Online",
-      copy: "Pickup or delivery from the full dinner menu, seven days a week.",
+      title: t["home.ways.order.title"],
+      copy: t["home.ways.order.copy"],
       href: "/menu",
       cta: "Start an order",
     },
     {
-      title: "Reservations",
-      copy: "Book a table for dinner, or call and we will take care of the rest.",
+      title: t["home.ways.reserve.title"],
+      copy: t["home.ways.reserve.copy"],
       href: "/reservations",
       cta: "Reserve a table",
     },
     {
-      title: "Catering",
-      copy: "Birthdays, engagements and corporate parties, hosted here or at your venue.",
+      title: t["home.ways.catering.title"],
+      copy: t["home.ways.catering.copy"],
       href: "/catering",
       cta: "Make an enquiry",
     },
@@ -114,12 +116,14 @@ export function WaysToOrder() {
       <div className="container-page grid gap-px overflow-hidden rounded-sm border border-cream-200 bg-cream-200 md:grid-cols-3">
         {ways.map((w) => (
           <Link
-            key={w.title}
+            key={w.href}
             href={w.href}
             className="group flex flex-col bg-cream p-7 transition-colors duration-300 hover:bg-cream-100 lg:p-9"
           >
             <h3 className="font-display text-2xl">{w.title}</h3>
-            <p className="mt-3 flex-1 text-[0.9375rem] leading-relaxed text-ink-500">{w.copy}</p>
+            <p className="mt-3 flex-1 text-[0.9375rem] leading-relaxed text-ink-500">
+              <Lines text={w.copy} />
+            </p>
             <span className="mt-6 inline-flex items-center gap-2 text-[0.8125rem] font-medium text-gold">
               {w.cta}
               <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>

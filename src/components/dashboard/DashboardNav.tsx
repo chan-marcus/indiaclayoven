@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { OvenMark } from "@/components/site/OvenMark";
 import { useRestaurantData } from "@/lib/restaurant-data";
-import { IconGrid, IconReceipt, IconSettings, IconArrowRight } from "@/components/ui/icons";
+import { IconGrid, IconReceipt, IconSettings, IconArrowRight, IconEdit } from "@/components/ui/icons";
 
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: IconGrid },
   { href: "/dashboard/orders", label: "Orders", icon: IconReceipt },
   { href: "/dashboard/menu", label: "Menu", icon: IconGrid },
+  { href: "/dashboard/content", label: "Website text", icon: IconEdit },
   { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
 ];
 

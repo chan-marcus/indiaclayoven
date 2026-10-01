@@ -3,7 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/site/PageHeader";
 import { fullAddress, mapsUrl, telHref } from "@/lib/restaurant";
-import { getRestaurant } from "@/lib/db";
+import { getRestaurant, getSiteText } from "@/lib/db";
+import { Lines } from "@/components/ui/Lines";
 import { IconArrowRight } from "@/components/ui/icons";
 
 export const metadata: Metadata = {
@@ -13,12 +14,12 @@ export const metadata: Metadata = {
 };
 
 export default async function AboutPage() {
-  const restaurant = await getRestaurant();
+  const [restaurant, t] = await Promise.all([getRestaurant(), getSiteText()]);
   return (
     <>
       <PageHeader
-        eyebrow="About Us"
-        title="A neighbourhood clay oven on Clement Street"
+        eyebrow={t["about.header.eyebrow"]}
+        title={t["about.header.title"]}
         image="/images/restaurant-interior.jpg"
         alt="The dining room at India Clay Oven"
       />
@@ -27,27 +28,21 @@ export default async function AboutPage() {
       <section className="section">
         <div className="container-page grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
           <div>
-            <p className="eyebrow eyebrow-rule">Our story</p>
+            <p className="eyebrow eyebrow-rule">{t["about.story.eyebrow"]}</p>
             <h2 className="display-md mt-5 text-balance">
-              Traditional North Indian, cooked the long way
+              {t["about.story.title"]}
             </h2>
           </div>
 
           <div className="space-y-6 text-[1.0625rem] leading-relaxed text-pretty text-ink-700">
             <p>
-              India Clay Oven has served the Richmond District from a small storefront on Clement
-              Street for many years. The cooking is traditional North Indian: a charcoal-fired
-              tandoor for breads and kababs, heavy pots for the curries, and spices ground in the
-              kitchen rather than bought by the case.
+              <Lines text={t["about.story.p1"]} />
             </p>
             <p>
-              At lunch the room fills for the daily buffet, a rotating spread of vegetarian
-              dishes, chicken, rice, raita and fresh nan. In the evening the full dinner menu comes
-              out, along with the bar. Regulars bring their families; first-timers usually come
-              back.
+              <Lines text={t["about.story.p2"]} />
             </p>
             <p className="text-ink-500">
-              Ask and we will make any dish gluten free, vegan or dairy free.
+              <Lines text={t["about.story.p3"]} />
             </p>
           </div>
         </div>
@@ -69,41 +64,35 @@ export default async function AboutPage() {
         <div className="container-page max-w-4xl">
           <div className="grid gap-14 md:gap-20">
             <article className="grid gap-6 md:grid-cols-[10rem_1fr] md:gap-12">
-              <p className="eyebrow pt-1.5">The oven</p>
+              <p className="eyebrow pt-1.5">{t["about.oven.eyebrow"]}</p>
               <div>
                 <h3 className="display-md text-balance">
-                  The tandoor runs on charcoal from open to close
+                  {t["about.oven.title"]}
                 </h3>
                 <p className="mt-5 text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
-                  Breads are slapped against the clay wall and baked to order. Kababs come out on
-                  sizzling platters. Nothing here is finished in a microwave, which is why the nan
-                  arrives when it arrives.
+                  <Lines text={t["about.oven.body"]} />
                 </p>
               </div>
             </article>
 
             <article className="grid gap-6 md:grid-cols-[10rem_1fr] md:gap-12">
-              <p className="eyebrow pt-1.5">The kitchen</p>
+              <p className="eyebrow pt-1.5">{t["about.kitchen.eyebrow"]}</p>
               <div>
-                <h3 className="display-md text-balance">Curries are built the slow way</h3>
+                <h3 className="display-md text-balance">{t["about.kitchen.title"]}</h3>
                 <p className="mt-5 text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
-                  Onions browned properly, whole spices bloomed in hot oil, then left to simmer.
-                  A vindaloo should sting a little; a korma should not. We cook to the dish rather
-                  than to a house spice level, and we will happily adjust either way.
+                  <Lines text={t["about.kitchen.body"]} />
                 </p>
               </div>
             </article>
 
             <article className="grid gap-6 md:grid-cols-[10rem_1fr] md:gap-12">
-              <p className="eyebrow pt-1.5">The room</p>
+              <p className="eyebrow pt-1.5">{t["about.room.eyebrow"]}</p>
               <div>
                 <h3 className="display-md text-balance">
-                  A short walk from Golden Gate Park
+                  {t["about.room.title"]}
                 </h3>
                 <p className="mt-5 text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
-                  We are on Clement between 25th and 26th Avenue, in the middle of one of the best
-                  eating streets in San Francisco. Street parking is easiest before 6pm, and the full
-                  bar is open through dinner.
+                  <Lines text={t["about.room.body"]} />
                 </p>
               </div>
             </article>
@@ -125,8 +114,8 @@ export default async function AboutPage() {
           </div>
 
           <div>
-            <p className="eyebrow eyebrow-rule">Visit us</p>
-            <h2 className="display-md mt-5">Come by for the buffet, stay for dinner</h2>
+            <p className="eyebrow eyebrow-rule">{t["about.visit.eyebrow"]}</p>
+            <h2 className="display-md mt-5">{t["about.visit.title"]}</h2>
 
             <dl className="mt-9 space-y-6 border-t border-cream-300 pt-8">
               <div>
@@ -148,7 +137,7 @@ export default async function AboutPage() {
                   <br />
                   {restaurant.hours.buffet}
                   <br />
-                  Full dinner menu 7 days a week
+                  {t["about.visit.hours_note"]}
                 </dd>
               </div>
               <div>

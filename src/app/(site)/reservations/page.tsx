@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/site/PageHeader";
 import { ReservationForm } from "@/components/forms/ReservationForm";
 import { telHref } from "@/lib/restaurant";
-import { getRestaurant } from "@/lib/db";
+import { getRestaurant, getSiteText } from "@/lib/db";
+import { Lines } from "@/components/ui/Lines";
 
 export const metadata: Metadata = {
   title: "Reservations",
@@ -11,22 +12,24 @@ export const metadata: Metadata = {
 };
 
 export default async function ReservationsPage() {
-  const restaurant = await getRestaurant();
+  const [restaurant, t] = await Promise.all([getRestaurant(), getSiteText()]);
+  // "{phone}" in the text becomes a tap-to-call link.
+  const [beforePhone, ...rest] = t["reservations.large_parties"].split("{phone}");
+  const afterPhone = rest.join(restaurant.phone);
   return (
     <>
       <PageHeader
-        eyebrow="Reservations"
-        title="Book a table"
-        intro="Dinner is served seven nights a week. Tell us when you would like to come in and we will confirm by phone."
+        eyebrow={t["reservations.header.eyebrow"]}
+        title={t["reservations.header.title"]}
+        intro={t["reservations.header.intro"]}
       />
 
       <section className="section">
         <div className="container-page grid gap-12 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
           <div>
-            <h2 className="display-md text-balance">An evening on Clement Street</h2>
+            <h2 className="display-md text-balance">{t["reservations.body.title"]}</h2>
             <p className="mt-5 text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
-              The dining room is quiet enough to talk in and the full bar is open through dinner.
-              Larger parties are welcome. We will put tables together.
+              <Lines text={t["reservations.body.text"]} />
             </p>
 
             <dl className="mt-10 space-y-6 border-t border-cream-200 pt-8 text-[0.9375rem]">
@@ -35,7 +38,7 @@ export default async function ReservationsPage() {
                   Dinner service
                 </dt>
                 <dd className="mt-1.5 leading-relaxed">
-                  Seven nights a week
+                  {t["reservations.dinner_note"]}
                   <br />
                   <span className="text-ink-500">{restaurant.hours.summary}</span>
                 </dd>
@@ -47,7 +50,7 @@ export default async function ReservationsPage() {
                 <dd className="mt-1.5 leading-relaxed">
                   {restaurant.hours.buffet}
                   <br />
-                  <span className="text-ink-500">No reservation needed. Walk in.</span>
+                  <span className="text-ink-500">{t["reservations.buffet_note"]}</span>
                 </dd>
               </div>
               <div>
@@ -55,11 +58,13 @@ export default async function ReservationsPage() {
                   Large parties
                 </dt>
                 <dd className="mt-1.5 leading-relaxed">
-                  For nine or more, call{" "}
-                  <a href={telHref(restaurant)} className="text-gold underline-offset-4 hover:underline">
-                    {restaurant.phone}
-                  </a>{" "}
-                  and we will arrange the room.
+                  {beforePhone}
+                  {rest.length > 0 && (
+                    <a href={telHref(restaurant)} className="text-gold underline-offset-4 hover:underline">
+                      {restaurant.phone}
+                    </a>
+                  )}
+                  {afterPhone}
                 </dd>
               </div>
             </dl>

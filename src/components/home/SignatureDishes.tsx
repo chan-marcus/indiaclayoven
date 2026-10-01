@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getCategories, getMenuItems } from "@/lib/db";
+import { getCategories, getMenuItems, getSiteText } from "@/lib/db";
 import { currency } from "@/lib/format";
 import { BadgeOnDark } from "@/components/ui/Badge";
 import { IconArrowRight } from "@/components/ui/icons";
@@ -10,7 +10,7 @@ import { IconArrowRight } from "@/components/ui/icons";
  * dish's detail modal on arrival: one tap from "that looks good" to ordering.
  */
 export async function SignatureDishes() {
-  const [items, categories] = await Promise.all([getMenuItems(), getCategories()]);
+  const [items, categories, t] = await Promise.all([getMenuItems(), getCategories(), getSiteText()]);
   const dishes = items.filter((i) => i.signature);
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "";
 
@@ -19,9 +19,9 @@ export async function SignatureDishes() {
       <div className="container-page">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="eyebrow eyebrow-rule">Our Menu</p>
+            <p className="eyebrow eyebrow-rule">{t["home.signature.eyebrow"]}</p>
             <h2 className="display-lg mt-5 max-w-xl text-balance">
-              What people order again and again
+              {t["home.signature.title"]}
             </h2>
           </div>
           <Link href="/menu" className="btn btn-secondary group">

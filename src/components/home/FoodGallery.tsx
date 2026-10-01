@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { galleryImages } from "@/lib/gallery";
+import { useRestaurantData } from "@/lib/restaurant-data";
 import { IconChevronLeft, IconChevronRight } from "@/components/ui/icons";
 
 /**
@@ -10,6 +11,7 @@ import { IconChevronLeft, IconChevronRight } from "@/components/ui/icons";
  * and trackpad swiping behave natively; the arrows are a desktop affordance.
  */
 export function FoodGallery() {
+  const { text: t } = useRestaurantData();
   const railRef = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -44,9 +46,9 @@ export function FoodGallery() {
       <div className="container-page">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="eyebrow eyebrow-rule eyebrow-on-dark">From our guests</p>
+            <p className="eyebrow eyebrow-rule eyebrow-on-dark">{t["home.gallery.eyebrow"]}</p>
             <h2 className="display-lg mt-5 max-w-lg text-balance text-cream">
-              Photographed on the table, not in a studio
+              {t["home.gallery.title"]}
             </h2>
           </div>
 

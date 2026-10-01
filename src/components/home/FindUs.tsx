@@ -1,11 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { mapsUrl, mapsEmbedUrl, telHref } from "@/lib/restaurant";
-import { getRestaurant } from "@/lib/db";
+import { getRestaurant, getSiteText } from "@/lib/db";
+import { fillText } from "@/lib/site-text";
+import { Lines } from "@/components/ui/Lines";
 import { IconArrowRight } from "@/components/ui/icons";
 
 export async function FindUs() {
-  const restaurant = await getRestaurant();
+  const [restaurant, t] = await Promise.all([getRestaurant(), getSiteText()]);
   return (
     <section className="section">
       <div className="container-page grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
@@ -20,15 +22,12 @@ export async function FindUs() {
         </div>
 
         <div>
-          <p className="eyebrow eyebrow-rule">Find us</p>
+          <p className="eyebrow eyebrow-rule">{t["home.findus.eyebrow"]}</p>
           <h2 className="display-md mt-5 max-w-md text-balance">
-            Two blocks of Clement Street, one very old oven
+            {t["home.findus.title"]}
           </h2>
           <p className="mt-5 max-w-md text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
-            <span className="block">
-              We are on Clement between 25th and 26th Avenue, a short walk from Golden Gate Park.
-            </span>
-            <span className="block">Parking on the street is easiest before 6pm.</span>
+            <Lines text={t["home.findus.body"]} />
           </p>
 
           <dl className="mt-9 space-y-5 border-t border-cream-200 pt-8">
@@ -82,7 +81,7 @@ export async function FindUs() {
 }
 
 export async function ClosingCta() {
-  const restaurant = await getRestaurant();
+  const [restaurant, t] = await Promise.all([getRestaurant(), getSiteText()]);
   return (
     <section className="relative isolate overflow-hidden bg-clay">
       <Image
@@ -95,10 +94,9 @@ export async function ClosingCta() {
       <div className="absolute inset-0 bg-clay-dark/55" aria-hidden />
 
       <div className="container-page relative z-10 flex flex-col items-center py-20 text-center md:py-28">
-        <h2 className="display-lg max-w-2xl text-balance text-cream">Hungry tonight?</h2>
+        <h2 className="display-lg max-w-2xl text-balance text-cream">{t["home.closing.title"]}</h2>
         <p className="mt-5 max-w-lg text-[1.0625rem] leading-relaxed text-pretty text-cream/75">
-          Order for pickup or delivery, or call us at {restaurant.phone} and we will have it
-          ready.
+          <Lines text={fillText(t["home.closing.body"], restaurant)} />
         </p>
         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
           <Link href="/menu" className="btn btn-gold group">
