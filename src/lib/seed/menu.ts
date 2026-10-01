@@ -58,6 +58,7 @@ const item = (
   image: img(image),
   available: opts.available ?? true,
   badges: opts.badges ?? [],
+  optionGroupIds: [],
   signature: opts.signature,
   sort: ++seq,
 });

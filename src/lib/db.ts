@@ -5,10 +5,13 @@ import { RESTAURANT_ID } from "@/lib/restaurant";
 import {
   categoryFromRow,
   menuItemFromRow,
+  optionGroupFromRow,
   orderFromRow,
+  MENU_ITEM_SELECT,
   restaurantFromRow,
   type CategoryRow,
-  type MenuItemRow,
+  type MenuItemWithGroupsRow,
+  type OptionGroupRow,
   type OrderRow,
   type RestaurantRow,
 } from "@/lib/db-rows";
@@ -39,10 +42,19 @@ export const getCategories = cache(async () => {
 export const getMenuItems = cache(async () => {
   const res = await supabase
     .from("menu_items")
-    .select("*")
+    .select(MENU_ITEM_SELECT)
     .eq("restaurant_id", RESTAURANT_ID)
     .order("sort");
-  return rows<MenuItemRow[]>(res, "menu items").map(menuItemFromRow);
+  return rows<MenuItemWithGroupsRow[]>(res, "menu items").map(menuItemFromRow);
+});
+
+export const getOptionGroups = cache(async () => {
+  const res = await supabase
+    .from("option_groups")
+    .select("id, restaurant_id, name, options, sort")
+    .eq("restaurant_id", RESTAURANT_ID)
+    .order("sort");
+  return rows<OptionGroupRow[]>(res, "option groups").map(optionGroupFromRow);
 });
 
 /** Contains customer contact details. Only ever load this for the owner dashboard. */

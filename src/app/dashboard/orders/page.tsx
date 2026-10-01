@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
-import { currency, timeOfDay, dayAndTime, deliveryAddress, orderNo } from "@/lib/format";
+import { choiceText, currency, timeOfDay, dayAndTime, deliveryAddress, orderNo } from "@/lib/format";
 import { RelativeTime } from "@/components/dashboard/RelativeTime";
 import { EmailStatus } from "@/components/dashboard/EmailStatus";
 import type { Order, OrderStatus } from "@/lib/types";
@@ -215,6 +215,11 @@ export default function OrdersPage() {
                         <p className="text-[0.9375rem]">
                           <span className="text-ink-500 tabular-nums">{i.quantity}×</span> {i.name}
                         </p>
+                        {i.choices?.length ? (
+                          <p className="mt-0.5 text-[0.8125rem] font-medium text-ink-700">
+                            {choiceText(i.choices)}
+                          </p>
+                        ) : null}
                         {i.notes && (
                           <p className="mt-0.5 text-xs text-ink-500 italic">“{i.notes}”</p>
                         )}

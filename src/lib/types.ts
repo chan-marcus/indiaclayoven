@@ -68,6 +68,28 @@ export interface MenuItem {
   /** Surfaced in the Signature Dishes section on the homepage. */
   signature?: boolean;
   sort: number;
+  /** Option groups the customer chooses from, in display order. */
+  optionGroupIds: ID[];
+}
+
+/**
+ * A reusable set of choices, e.g. "Spice level: Mild, Medium, Hot". Created
+ * once and attached to any number of dishes; the customer picks one option.
+ */
+export interface OptionGroup {
+  id: ID;
+  restaurantId: ID;
+  name: string;
+  options: string[];
+  sort: number;
+}
+
+/** What the customer picked from one option group. */
+export interface Choice {
+  groupId: ID;
+  /** The group's name when it was picked, e.g. "Spice level". */
+  group: string;
+  choice: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -82,6 +104,7 @@ export interface CartLine {
   price: number;
   image: string;
   quantity: number;
+  choices?: Choice[];
   notes?: string;
 }
 
@@ -95,6 +118,7 @@ export interface OrderItem {
   name: string;
   price: number;
   quantity: number;
+  choices?: Choice[];
   notes?: string;
 }
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Order } from "@/lib/types";
 import { loadOrder } from "@/lib/order-store";
-import { currency, timeOfDay, dayAndTime, deliveryAddress, orderNo } from "@/lib/format";
+import { choiceText, currency, timeOfDay, dayAndTime, deliveryAddress, orderNo } from "@/lib/format";
 import { fullAddress, mapsUrl, telHref } from "@/lib/restaurant";
 import { useRestaurantData } from "@/lib/restaurant-data";
 import { IconCheck, IconPhone, IconPin } from "@/components/ui/icons";
@@ -122,6 +122,9 @@ export function Confirmation() {
                   <p className="text-[0.9375rem]">
                     <span className="text-ink-500 tabular-nums">{i.quantity}×</span> {i.name}
                   </p>
+                  {i.choices?.length ? (
+                    <p className="mt-0.5 text-xs text-ink-700">{choiceText(i.choices)}</p>
+                  ) : null}
                   {i.notes && <p className="mt-0.5 text-xs text-ink-500 italic">“{i.notes}”</p>}
                   <p className="mt-0.5 text-xs tabular-nums text-ink-500">
                     {currency(i.price * i.quantity)}

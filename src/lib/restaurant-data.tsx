@@ -1,13 +1,17 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
-import type { Category, MenuItem, Restaurant } from "@/lib/types";
+import type { Category, MenuItem, OptionGroup, Restaurant } from "@/lib/types";
 import type { SiteText } from "@/lib/site-text";
 import {
   createCategory,
   createMenuItem,
+  createOptionGroup,
   deleteMenuItem,
+  deleteOptionGroup,
   setItemAvailability,
+  setOptionGroupOnItems,
+  updateOptionGroup,
   updateMenuItem,
   updateRestaurant,
   updateSiteText,
@@ -30,11 +34,17 @@ export type PublicData = {
   settings: Restaurant;
   categories: Category[];
   items: MenuItem[];
+  /** Reusable choices (e.g. spice level) that dishes point to. */
+  optionGroups: OptionGroup[];
   /** Website wording, with the owner's edits. */
   text: SiteText;
 };
 
-type ItemInput = Pick<MenuItem, "name" | "description" | "price" | "categoryId" | "available">;
+type ItemInput = Pick<
+  MenuItem,
+  "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds"
+>;
+type GroupInput = Pick<OptionGroup, "name" | "options">;
 type SettingsInput = Parameters<typeof updateRestaurant>[0];
 
 interface DataValue extends PublicData {
@@ -43,6 +53,12 @@ interface DataValue extends PublicData {
   addItem: (item: ItemInput & { image?: string }) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
   addCategory: (name: string) => Promise<void>;
+  /** The option-group writes reject with the reason so the form can show it. */
+  addOptionGroup: (input: GroupInput) => Promise<OptionGroup>;
+  updateOptionGroup: (id: string, input: GroupInput) => Promise<void>;
+  deleteOptionGroup: (id: string) => Promise<void>;
+  /** Adds the group to (or removes it from) each listed dish. */
+  setOptionGroupOnItems: (groupId: string, itemIds: string[], attached: boolean) => Promise<void>;
   updateSettings: (input: SettingsInput) => Promise<void>;
   /** Rejects with the reason if the save fails. */
   updateText: (changes: Record<string, string>) => Promise<void>;
@@ -66,6 +82,7 @@ export function RestaurantDataProvider({
   const [settings, setSettings] = useState(initial.settings);
   const [categories, setCategories] = useState(initial.categories);
   const [items, setItems] = useState(initial.items);
+  const [optionGroups, setOptionGroups] = useState(initial.optionGroups);
   const [text, setText] = useState(initial.text);
 
   // A server refresh (after any save) hands in fresh data; adopt it.
@@ -75,6 +92,7 @@ export function RestaurantDataProvider({
     setSettings(initial.settings);
     setCategories(initial.categories);
     setItems(initial.items);
+    setOptionGroups(initial.optionGroups);
     setText(initial.text);
   }
 
@@ -85,6 +103,7 @@ export function RestaurantDataProvider({
     settings,
     categories,
     items,
+    optionGroups,
     text,
 
     toggleAvailability: async (id) => {
@@ -134,6 +153,37 @@ export function RestaurantDataProvider({
       } catch (err) {
         reportFailure("add that category", err);
       }
+    },
+
+    addOptionGroup: async (input) => {
+      const created = unwrap(await createOptionGroup(input));
+      setOptionGroups((g) => [...g, created]);
+      return created;
+    },
+
+    updateOptionGroup: async (id, input) => {
+      const saved = unwrap(await updateOptionGroup(id, input));
+      setOptionGroups((g) => g.map((x) => (x.id === id ? saved : x)));
+    },
+
+    deleteOptionGroup: async (id) => {
+      unwrap(await deleteOptionGroup(id));
+      setOptionGroups((g) => g.filter((x) => x.id !== id));
+      setItems((s) =>
+        s.map((i) => ({ ...i, optionGroupIds: i.optionGroupIds.filter((g) => g !== id) })),
+      );
+    },
+
+    setOptionGroupOnItems: async (groupId, itemIds, attached) => {
+      unwrap(await setOptionGroupOnItems(groupId, itemIds, attached));
+      const ids = new Set(itemIds);
+      setItems((s) =>
+        s.map((i) => {
+          if (!ids.has(i.id)) return i;
+          const rest = i.optionGroupIds.filter((g) => g !== groupId);
+          return { ...i, optionGroupIds: attached ? [...rest, groupId] : rest };
+        }),
+      );
     },
 
     updateSettings: async (input) => {

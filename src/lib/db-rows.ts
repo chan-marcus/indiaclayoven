@@ -2,6 +2,7 @@ import type {
   BadgeKind,
   Category,
   MenuItem,
+  OptionGroup,
   Order,
   OrderStatus,
   OrderTiming,
@@ -46,6 +47,22 @@ export type MenuItemRow = {
   available: boolean;
   badges: BadgeKind[];
   signature: boolean;
+  sort: number;
+};
+
+/** A menu item as selected with its attached option groups. */
+export type MenuItemWithGroupsRow = MenuItemRow & {
+  menu_item_option_groups?: { group_id: string }[];
+};
+
+/** Select string that loads a menu item with its option groups. */
+export const MENU_ITEM_SELECT = "*, menu_item_option_groups(group_id)";
+
+export type OptionGroupRow = {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  options: string[];
   sort: number;
 };
 
@@ -114,7 +131,7 @@ export const categoryToRow = (c: Category): CategoryRow => ({
   sort: c.sort,
 });
 
-export const menuItemFromRow = (r: MenuItemRow): MenuItem => ({
+export const menuItemFromRow = (r: MenuItemWithGroupsRow): MenuItem => ({
   id: r.id,
   restaurantId: r.restaurant_id,
   categoryId: r.category_id,
@@ -126,6 +143,7 @@ export const menuItemFromRow = (r: MenuItemRow): MenuItem => ({
   badges: r.badges,
   signature: r.signature || undefined,
   sort: r.sort,
+  optionGroupIds: (r.menu_item_option_groups ?? []).map((g) => g.group_id),
 });
 
 export const menuItemToRow = (i: MenuItem): MenuItemRow => ({
@@ -140,6 +158,14 @@ export const menuItemToRow = (i: MenuItem): MenuItemRow => ({
   badges: i.badges,
   signature: i.signature ?? false,
   sort: i.sort,
+});
+
+export const optionGroupFromRow = (r: OptionGroupRow): OptionGroup => ({
+  id: r.id,
+  restaurantId: r.restaurant_id,
+  name: r.name,
+  options: r.options,
+  sort: r.sort,
 });
 
 export const orderFromRow = (r: OrderRow): Order => ({

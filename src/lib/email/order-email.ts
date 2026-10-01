@@ -1,5 +1,5 @@
 import "server-only";
-import { orderNo } from "@/lib/format";
+import { choiceText, orderNo } from "@/lib/format";
 import { RESTAURANT_TIME_ZONE } from "@/lib/restaurant";
 import type { CardDetails, Order, Restaurant } from "@/lib/types";
 
@@ -99,7 +99,7 @@ export function buildOrderEmail(order: Order, card?: CardDetails) {
     ...(order.notes ? [`COMMENTS- ${one(order.notes)}`] : []),
     ...order.items.flatMap((i) => [
       RULE,
-      `${String(i.quantity).padEnd(6)}${one(i.name)}${i.notes ? `, ${one(i.notes)}` : ""}, ${money(i.price * i.quantity)} @ ${money(i.price)}`,
+      `${String(i.quantity).padEnd(6)}${one(i.name)}${i.choices?.length ? `, ${one(choiceText(i.choices))}` : ""}${i.notes ? `, ${one(i.notes)}` : ""}, ${money(i.price * i.quantity)} @ ${money(i.price)}`,
     ]),
     "",
     `Subtotal: ${money(order.subtotal)}`,

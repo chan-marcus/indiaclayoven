@@ -1,4 +1,7 @@
-import type { Order } from "@/lib/types";
+import type { Choice, Order } from "@/lib/types";
+
+/** What the customer picked, e.g. "Mild" or "Hot, Garlic Naan". */
+export const choiceText = (choices?: Choice[]) => (choices ?? []).map((c) => c.choice).join(", ");
 
 /** "1255 Taraval St, Apt 304, San Francisco 94115" for a delivery order. */
 export const deliveryAddress = ({ address, apt, city, zip }: Order["customer"]) =>

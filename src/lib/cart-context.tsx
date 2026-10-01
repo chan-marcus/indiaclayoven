@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { CartLine, MenuItem } from "@/lib/types";
+import type { CartLine, Choice, MenuItem } from "@/lib/types";
 import { useRestaurantData } from "@/lib/restaurant-data";
 
 /* ------------------------------------------------------------------ */
@@ -20,13 +20,16 @@ import { useRestaurantData } from "@/lib/restaurant-data";
 type State = { lines: CartLine[] };
 
 type Action =
-  | { type: "add"; item: MenuItem; quantity: number; notes?: string }
+  | { type: "add"; item: MenuItem; quantity: number; notes?: string; choices?: Choice[] }
   | { type: "setQuantity"; lineId: string; quantity: number }
   | { type: "remove"; lineId: string }
   | { type: "clear" }
   | { type: "hydrate"; lines: CartLine[] };
 
 const STORAGE_KEY = "ico.cart.v1";
+
+const sameChoices = (a: Choice[] = [], b: Choice[] = []) =>
+  a.length === b.length && a.every((c, i) => c.groupId === b[i].groupId && c.choice === b[i].choice);
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -35,9 +38,14 @@ function reducer(state: State, action: Action): State {
 
     case "add": {
       const notes = action.notes?.trim() || undefined;
-      // Same dish + same notes merges into one line; different notes stay separate.
+      const choices = action.choices?.length ? action.choices : undefined;
+      // Same dish, choices and notes merge into one line; anything different
+      // (Mild vs Hot, say) stays separate.
       const existing = state.lines.find(
-        (l) => l.itemId === action.item.id && (l.notes ?? undefined) === notes,
+        (l) =>
+          l.itemId === action.item.id &&
+          (l.notes ?? undefined) === notes &&
+          sameChoices(l.choices, choices),
       );
       if (existing) {
         return {
@@ -58,6 +66,7 @@ function reducer(state: State, action: Action): State {
             price: action.item.price,
             image: action.item.image,
             quantity: action.quantity,
+            choices,
             notes,
           },
         ],
@@ -99,7 +108,8 @@ interface CartValue {
   closeCart: () => void;
   /** Bumps whenever something is added. Drives the header cart nudge. */
   pulse: number;
-  addItem: (item: MenuItem, quantity?: number, notes?: string) => void;
+  /** Dishes with option groups need one choice per group. */
+  addItem: (item: MenuItem, quantity?: number, notes?: string, choices?: Choice[]) => void;
   setQuantity: (lineId: string, quantity: number) => void;
   removeLine: (lineId: string) => void;
   clear: () => void;
@@ -151,9 +161,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isOpen]);
 
-  const addItem = useCallback((item: MenuItem, quantity = 1, notes?: string) => {
+  const addItem = useCallback((item: MenuItem, quantity = 1, notes?: string, choices?: Choice[]) => {
     if (!item.available) return; // guard: sold-out items never enter the cart
-    dispatch({ type: "add", item, quantity, notes });
+    if ((choices?.length ?? 0) < item.optionGroupIds.length) return; // guard: choices not made
+    dispatch({ type: "add", item, quantity, notes, choices });
     setPulse((p) => p + 1);
   }, []);
 

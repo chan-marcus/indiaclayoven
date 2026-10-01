@@ -26,6 +26,10 @@ export function MenuBrowser() {
   );
   const [activeCategory, setActiveCategory] = useState(categories[0].id);
   const [openItem, setOpenItem] = useState<MenuItem | null>(null);
+
+  // A dish with choices (spice level etc.) opens so the customer can pick.
+  const quickAdd = (item: MenuItem) =>
+    item.optionGroupIds.length ? setOpenItem(item) : addItem(item, 1);
   const [query, setQuery] = useState("");
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -212,9 +216,7 @@ export function MenuBrowser() {
                       key={item.id}
                       item={item}
                       onOpen={() => setOpenItem(item)}
-                      onAdd={() => {
-                        addItem(item, 1);
-                      }}
+                      onAdd={() => quickAdd(item)}
                     />
                   ))}
                 </div>
@@ -252,7 +254,7 @@ export function MenuBrowser() {
                           key={item.id}
                           item={item}
                           onOpen={() => setOpenItem(item)}
-                          onAdd={() => addItem(item, 1)}
+                          onAdd={() => quickAdd(item)}
                         />
                       ))}
                     </div>

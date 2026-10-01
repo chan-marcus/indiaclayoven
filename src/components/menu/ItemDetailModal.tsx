@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import type { MenuItem } from "@/lib/types";
+import type { Choice, MenuItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
 import { currency } from "@/lib/format";
 import { Badge, SoldOutTag } from "@/components/ui/Badge";
@@ -18,9 +18,11 @@ export function ItemDetailModal({
   onClose: () => void;
 }) {
   const { addItem, openCart } = useCart();
-  const { categories } = useRestaurantData();
+  const { categories, optionGroups } = useRestaurantData();
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+  /** Option group id → the option picked. */
+  const [picked, setPicked] = useState<Record<string, string>>({});
 
   // Reset the form each time a different dish is opened.
   useEffect(() => {
@@ -28,6 +30,7 @@ export function ItemDetailModal({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setQuantity(1);
     setNotes("");
+    setPicked({});
   }, [item?.id]);
 
   useEffect(() => {
@@ -43,8 +46,13 @@ export function ItemDetailModal({
 
   if (!item) return null;
 
+  const groups = optionGroups.filter((g) => item.optionGroupIds.includes(g.id));
+  const missing = groups.find((g) => !g.options.includes(picked[g.id]));
+  const choices: Choice[] = groups.map((g) => ({ groupId: g.id, group: g.name, choice: picked[g.id] }));
+
   const add = () => {
-    addItem(item, quantity, notes);
+    if (missing) return;
+    addItem(item, quantity, notes, choices);
     onClose();
     openCart();
   };
@@ -109,6 +117,37 @@ export function ItemDetailModal({
 
           {item.available ? (
             <>
+              {groups.map((g) => (
+                <fieldset key={g.id} className="mt-7">
+                  <legend className="field-label">{g.name}</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {g.options.map((o) => {
+                      const on = picked[g.id] === o;
+                      return (
+                        <label
+                          key={o}
+                          className={`cursor-pointer rounded-xs border px-3.5 py-2 text-[0.875rem] whitespace-nowrap transition-colors has-focus-visible:ring-2 has-focus-visible:ring-gold ${
+                            on
+                              ? "border-clay bg-clay text-cream"
+                              : "border-cream-300 bg-white text-ink-700 hover:border-earth"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={`opt-${g.id}`}
+                            value={o}
+                            checked={on}
+                            onChange={() => setPicked((p) => ({ ...p, [g.id]: o }))}
+                            className="sr-only"
+                          />
+                          {o}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              ))}
+
               <div className="mt-7">
                 <label htmlFor="item-notes" className="field-label">
                   Special requests <span className="normal-case">(optional)</span>
@@ -119,7 +158,7 @@ export function ItemDetailModal({
                   onChange={(e) => setNotes(e.target.value)}
                   rows={3}
                   maxLength={200}
-                  placeholder="Mild, extra spicy, no dairy…"
+                  placeholder={groups.length ? "No nuts, extra sauce…" : "Mild, extra spicy, no dairy…"}
                   className="field-input"
                 />
                 <p className="mt-1.5 text-xs text-ink-400">
@@ -129,8 +168,17 @@ export function ItemDetailModal({
 
               <div className="mt-auto flex items-center gap-3 pt-7">
                 <QuantityStepper value={quantity} onChange={setQuantity} />
-                <button type="button" onClick={add} className="btn btn-primary flex-1">
-                  Add to Order · {currency(item.price * quantity)}
+                <button
+                  type="button"
+                  onClick={add}
+                  disabled={Boolean(missing)}
+                  className="btn btn-primary min-w-0 flex-1"
+                >
+                  <span className="truncate">
+                    {missing
+                      ? `Choose ${missing.name.toLowerCase()}`
+                      : `Add to Order · ${currency(item.price * quantity)}`}
+                  </span>
                 </button>
               </div>
             </>

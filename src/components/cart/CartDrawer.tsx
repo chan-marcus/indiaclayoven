@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
-import { currency } from "@/lib/format";
+import { choiceText, currency } from "@/lib/format";
 import { QuantityStepper } from "./QuantityStepper";
 import { IconBag, IconClose, IconTrash } from "@/components/ui/icons";
 
@@ -90,6 +90,9 @@ export function CartDrawer() {
                       {currency(line.price * line.quantity)}
                     </p>
 
+                    {line.choices?.length ? (
+                      <p className="mt-1 text-xs text-ink-700">{choiceText(line.choices)}</p>
+                    ) : null}
                     {line.notes && (
                       <p className="mt-1 text-xs leading-relaxed text-ink-500 italic">
                         “{line.notes}”

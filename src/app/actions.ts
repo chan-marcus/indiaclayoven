@@ -11,17 +11,21 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getMenuItems, getOrders, getRestaurant, getSiteText } from "@/lib/db";
+import { getMenuItems, getOptionGroups, getOrders, getRestaurant, getSiteText } from "@/lib/db";
 import { DEFAULT_TEXT, TEXT_FIELD, type SiteText, type TextKey } from "@/lib/site-text";
 import { RESTAURANT_ID, RESTAURANT_TIME_ZONE } from "@/lib/restaurant";
 import {
   categoryFromRow,
   menuItemFromRow,
+  optionGroupFromRow,
   orderFromRow,
+  MENU_ITEM_SELECT,
   restaurantFromRow,
   restaurantToRow,
   type CategoryRow,
   type MenuItemRow,
+  type MenuItemWithGroupsRow,
+  type OptionGroupRow,
   type OrderRow,
   type RestaurantRow,
 } from "@/lib/db-rows";
@@ -29,7 +33,9 @@ import type { ActionResult } from "@/lib/action-result";
 import { sendOrderEmail } from "@/lib/email/order-email";
 import type {
   Category,
+  Choice,
   MenuItem,
+  OptionGroup,
   Order,
   CardDetails,
   OrderStatus,
@@ -117,34 +123,84 @@ export async function setItemAvailability(id: string, available: boolean): Promi
   });
 }
 
-type ItemInput = Pick<MenuItem, "name" | "description" | "price" | "categoryId" | "available">;
+type ItemInput = Pick<
+  MenuItem,
+  "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds"
+>;
+
+/** Re-reads a dish with its option groups attached. */
+async function loadItem(id: string): Promise<MenuItem> {
+  const row = check<MenuItemWithGroupsRow>(
+    await supabase
+      .from("menu_items")
+      .select(MENU_ITEM_SELECT)
+      .eq("id", id)
+      .eq("restaurant_id", RESTAURANT_ID)
+      .single(),
+    "load the dish",
+  );
+  return menuItemFromRow(row);
+}
+
+/** Checks group ids belong to this restaurant; returns them deduplicated. */
+async function ownGroupIds(value: unknown): Promise<string[]> {
+  if (!Array.isArray(value)) throw new InputError("Invalid options");
+  const ids = [...new Set(value.map((v) => text(v, "Option group", 100)))];
+  if (ids.length === 0) return [];
+  const found = check<{ id: string }[]>(
+    await supabase.from("option_groups").select("id").eq("restaurant_id", RESTAURANT_ID).in("id", ids),
+    "check the options",
+  );
+  if (found.length !== ids.length) throw new InputError("One of those options was deleted. Reload and try again.");
+  return ids;
+}
+
+/** Replaces the option groups attached to one dish. */
+async function replaceItemGroups(itemId: string, groupIds: string[]) {
+  check(
+    await supabase.from("menu_item_option_groups").delete().eq("item_id", itemId),
+    "save the dish's options",
+  );
+  if (groupIds.length) {
+    check(
+      await supabase
+        .from("menu_item_option_groups")
+        .insert(groupIds.map((group_id) => ({ item_id: itemId, group_id }))),
+      "save the dish's options",
+    );
+  }
+}
 
 export async function updateMenuItem(id: string, patch: Partial<ItemInput>): Promise<ActionResult<MenuItem>> {
   return run(async () => {
+    const itemId = text(id, "Item");
     const update: Partial<MenuItemRow> = {};
     if ("name" in patch) update.name = text(patch.name, "Name", 120);
     if ("description" in patch) update.description = optionalText(patch.description, "Description");
     if ("price" in patch) update.price = money(patch.price, "Price");
     if ("categoryId" in patch) update.category_id = text(patch.categoryId, "Category");
     if ("available" in patch) update.available = Boolean(patch.available);
+    const groupIds = "optionGroupIds" in patch ? await ownGroupIds(patch.optionGroupIds) : null;
 
-    const row = check<MenuItemRow>(
-      await supabase
-        .from("menu_items")
-        .update(update)
-        .eq("id", text(id, "Item"))
-        .eq("restaurant_id", RESTAURANT_ID)
-        .select()
-        .single(),
+    // Also confirms the dish belongs to this restaurant before its options change.
+    const dish = supabase.from("menu_items");
+    check(
+      Object.keys(update).length
+        ? await dish.update(update).eq("id", itemId).eq("restaurant_id", RESTAURANT_ID).select("id").single()
+        : await dish.select("id").eq("id", itemId).eq("restaurant_id", RESTAURANT_ID).single(),
       "save the dish",
     );
+    if (groupIds) await replaceItemGroups(itemId, groupIds);
     refreshSite();
-    return menuItemFromRow(row);
+    return loadItem(itemId);
   });
 }
 
-export async function createMenuItem(input: ItemInput & { image?: string }): Promise<ActionResult<MenuItem>> {
+export async function createMenuItem(
+  input: Omit<ItemInput, "optionGroupIds"> & { optionGroupIds?: string[]; image?: string },
+): Promise<ActionResult<MenuItem>> {
   return run(async () => {
+    const groupIds = await ownGroupIds(input.optionGroupIds ?? []);
     const last = check<{ sort: number }[]>(
       await supabase
         .from("menu_items")
@@ -175,8 +231,9 @@ export async function createMenuItem(input: ItemInput & { image?: string }): Pro
         .single(),
       "add the dish",
     );
+    await replaceItemGroups(row.id, groupIds);
     refreshSite();
-    return menuItemFromRow(row);
+    return loadItem(row.id);
   });
 }
 
@@ -225,6 +282,127 @@ export async function createCategory(name: string): Promise<ActionResult<Categor
 }
 
 /* ------------------------------------------------------------------ */
+/* Option groups (owner)                                               */
+/* ------------------------------------------------------------------ */
+
+type GroupInput = { name: string; options: string[] };
+
+function groupFields(input: GroupInput) {
+  const name = text(input?.name, "Option name", 60);
+  if (!Array.isArray(input?.options)) throw new InputError("Add at least one choice");
+  const options: string[] = [];
+  for (const raw of input.options) {
+    if (typeof raw !== "string" || !raw.trim()) continue;
+    const o = raw.replace(/\s+/g, " ").trim();
+    if (o.length > 40) throw new InputError(`"${o.slice(0, 40)}…" is too long for a choice`);
+    if (!options.some((x) => x.toLowerCase() === o.toLowerCase())) options.push(o);
+  }
+  if (options.length === 0) throw new InputError("Add at least one choice");
+  if (options.length > 20) throw new InputError("An option can have at most 20 choices");
+  return { name, options };
+}
+
+export async function createOptionGroup(input: GroupInput): Promise<ActionResult<OptionGroup>> {
+  return run(async () => {
+    const fields = groupFields(input);
+    const last = check<{ sort: number }[]>(
+      await supabase
+        .from("option_groups")
+        .select("sort")
+        .eq("restaurant_id", RESTAURANT_ID)
+        .order("sort", { ascending: false })
+        .limit(1),
+      "add the option",
+    );
+    const row = check<OptionGroupRow>(
+      await supabase
+        .from("option_groups")
+        .insert({
+          id: `opt_${crypto.randomUUID()}`,
+          restaurant_id: RESTAURANT_ID,
+          ...fields,
+          sort: (last[0]?.sort ?? 0) + 1,
+        })
+        .select("id, restaurant_id, name, options, sort")
+        .single(),
+      "add the option",
+    );
+    refreshSite();
+    return optionGroupFromRow(row);
+  });
+}
+
+export async function updateOptionGroup(id: string, input: GroupInput): Promise<ActionResult<OptionGroup>> {
+  return run(async () => {
+    const row = check<OptionGroupRow>(
+      await supabase
+        .from("option_groups")
+        .update(groupFields(input))
+        .eq("id", text(id, "Option"))
+        .eq("restaurant_id", RESTAURANT_ID)
+        .select("id, restaurant_id, name, options, sort")
+        .single(),
+      "save the option",
+    );
+    refreshSite();
+    return optionGroupFromRow(row);
+  });
+}
+
+/** Deletes the group and takes it off every dish. */
+export async function deleteOptionGroup(id: string): Promise<ActionResult<void>> {
+  return run(async () => {
+    check(
+      await supabase
+        .from("option_groups")
+        .delete()
+        .eq("id", text(id, "Option"))
+        .eq("restaurant_id", RESTAURANT_ID),
+      "delete the option",
+    );
+    refreshSite();
+  });
+}
+
+/** Adds an option group to, or removes it from, many dishes at once. */
+export async function setOptionGroupOnItems(
+  groupId: string,
+  itemIds: string[],
+  attached: boolean,
+): Promise<ActionResult<void>> {
+  return run(async () => {
+    const [gid] = await ownGroupIds([groupId]);
+    if (!Array.isArray(itemIds) || itemIds.length === 0) throw new InputError("Select at least one dish");
+    if (itemIds.length > 500) throw new InputError("Too many dishes selected");
+    const ids = [...new Set(itemIds.map((i) => text(i, "Item", 100)))];
+    const own = check<{ id: string }[]>(
+      await supabase.from("menu_items").select("id").eq("restaurant_id", RESTAURANT_ID).in("id", ids),
+      "update the dishes",
+    );
+    const valid = own.map((r) => r.id);
+    if (valid.length === 0) throw new InputError("Those dishes are no longer on the menu");
+
+    if (attached) {
+      check(
+        await supabase
+          .from("menu_item_option_groups")
+          .upsert(
+            valid.map((item_id) => ({ item_id, group_id: gid })),
+            { onConflict: "item_id,group_id", ignoreDuplicates: true },
+          ),
+        "update the dishes",
+      );
+    } else {
+      check(
+        await supabase.from("menu_item_option_groups").delete().eq("group_id", gid).in("item_id", valid),
+        "update the dishes",
+      );
+    }
+    refreshSite();
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Orders                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -235,9 +413,34 @@ export type PlaceOrderInput = {
   type: OrderType;
   timing: OrderTiming;
   requestedFor: string;
-  items: { itemId: string; quantity: number; notes?: string }[];
+  items: {
+    itemId: string;
+    quantity: number;
+    /** Option group id → the option picked. */
+    choices?: Record<string, string>;
+    notes?: string;
+  }[];
   notes?: string;
 };
+
+/**
+ * One pick from every option group on the dish, each an option that exists.
+ * Returned in the groups' display order with their current names.
+ */
+function dishChoices(dish: MenuItem, groups: OptionGroup[], picked: unknown): Choice[] | undefined {
+  const own = groups.filter((g) => dish.optionGroupIds.includes(g.id));
+  if (own.length === 0) return undefined;
+  const map = picked && typeof picked === "object" ? (picked as Record<string, unknown>) : {};
+  return own.map((g) => {
+    const choice = map[g.id];
+    if (typeof choice !== "string" || !g.options.includes(choice)) {
+      throw new InputError(
+        `The choices for ${dish.name} have changed. Remove it from your order and add it again.`,
+      );
+    }
+    return { groupId: g.id, group: g.name, choice };
+  });
+}
 
 /**
  * Public: called by the customer checkout. Prices, tax and totals are worked
@@ -253,7 +456,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
       throw new InputError("Your order is empty");
     }
 
-    const [restaurant, menu] = await Promise.all([getRestaurant(), getMenuItems()]);
+    const [restaurant, menu, groups] = await Promise.all([getRestaurant(), getMenuItems(), getOptionGroups()]);
     const byId = new Map(menu.map((m) => [m.id, m]));
 
     const items = input.items.map((line) => {
@@ -267,6 +470,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
         name: dish.name,
         price: dish.price,
         quantity,
+        choices: dishChoices(dish, groups, line.choices),
         notes: optionalText(line.notes, "Item note", 300) ?? undefined,
       };
     });

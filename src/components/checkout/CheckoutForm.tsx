@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useCart } from "@/lib/cart-context";
-import { currency } from "@/lib/format";
+import { choiceText, currency } from "@/lib/format";
 import { saveOrder } from "@/lib/order-store";
 import { placeOrder } from "@/app/actions";
 import { unwrap } from "@/lib/action-result";
@@ -137,7 +137,12 @@ export function CheckoutForm() {
         type,
         timing,
         requestedFor,
-          items: lines.map((l) => ({ itemId: l.itemId, quantity: l.quantity, notes: l.notes })),
+          items: lines.map((l) => ({
+            itemId: l.itemId,
+            quantity: l.quantity,
+            choices: Object.fromEntries((l.choices ?? []).map((c) => [c.groupId, c.choice])),
+            notes: l.notes,
+          })),
           notes: form.notes.trim(),
         }),
       );
@@ -394,6 +399,9 @@ export function CheckoutForm() {
                     <p className="text-sm leading-snug font-medium">
                       <span className="text-ink-500 tabular-nums">{l.quantity}×</span> {l.name}
                     </p>
+                    {l.choices?.length ? (
+                      <p className="mt-0.5 text-xs text-ink-700">{choiceText(l.choices)}</p>
+                    ) : null}
                     {l.notes && (
                       <p className="mt-0.5 text-xs text-ink-500 italic">“{l.notes}”</p>
                     )}
