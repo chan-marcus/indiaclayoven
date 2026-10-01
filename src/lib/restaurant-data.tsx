@@ -46,7 +46,7 @@ type ItemInput = Pick<
   MenuItem,
   "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds"
 >;
-type GroupInput = Pick<OptionGroup, "name" | "options">;
+type GroupInput = Pick<OptionGroup, "name" | "options" | "prices">;
 type SettingsInput = Parameters<typeof updateRestaurant>[0];
 
 interface DataValue extends PublicData {

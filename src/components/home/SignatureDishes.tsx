@@ -1,6 +1,7 @@
 import { DishImage } from "@/components/ui/DishImage";
 import Link from "next/link";
-import { getCategories, getMenuItems, getSiteText } from "@/lib/db";
+import { getCategories, getMenuItems, getOptionGroups, getSiteText } from "@/lib/db";
+import { hasPricedChoices } from "@/lib/pricing";
 import { currency } from "@/lib/format";
 import { BadgeOnDark } from "@/components/ui/Badge";
 import { IconArrowRight } from "@/components/ui/icons";
@@ -11,7 +12,12 @@ import { Txt } from "@/components/ui/Txt";
  * dish's detail modal on arrival: one tap from "that looks good" to ordering.
  */
 export async function SignatureDishes() {
-  const [items, categories, t] = await Promise.all([getMenuItems(), getCategories(), getSiteText()]);
+  const [items, categories, groups, t] = await Promise.all([
+    getMenuItems(),
+    getCategories(),
+    getOptionGroups(),
+    getSiteText(),
+  ]);
   const dishes = items.filter((i) => i.signature);
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "";
 
@@ -76,6 +82,7 @@ export async function SignatureDishes() {
 
               <div className="mt-3 flex items-center justify-between border-t border-cream-200 pt-3">
                 <span className="text-[0.9375rem] font-medium tabular-nums">
+                  {hasPricedChoices(dish, groups) && "From "}
                   {currency(dish.price)}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-[0.8125rem] font-medium text-gold">

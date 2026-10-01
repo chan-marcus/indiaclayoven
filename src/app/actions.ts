@@ -30,6 +30,7 @@ import {
   type RestaurantRow,
 } from "@/lib/db-rows";
 import type { ActionResult } from "@/lib/action-result";
+import { addOn, unitPrice } from "@/lib/pricing";
 import { sendOrderEmail } from "@/lib/email/order-email";
 import type {
   Category,
@@ -364,21 +365,26 @@ export async function createCategory(name: string): Promise<ActionResult<Categor
 /* Option groups (owner)                                               */
 /* ------------------------------------------------------------------ */
 
-type GroupInput = { name: string; options: string[] };
+/** `prices[i]` is what `options[i]` adds to the dish price; missing means 0. */
+type GroupInput = { name: string; options: string[]; prices?: number[] };
 
 function groupFields(input: GroupInput) {
   const name = text(input?.name, "Option name", 60);
   if (!Array.isArray(input?.options)) throw new InputError("Add at least one choice");
   const options: string[] = [];
-  for (const raw of input.options) {
-    if (typeof raw !== "string" || !raw.trim()) continue;
+  const prices: number[] = [];
+  input.options.forEach((raw, i) => {
+    if (typeof raw !== "string" || !raw.trim()) return;
     const o = raw.replace(/\s+/g, " ").trim();
     if (o.length > 40) throw new InputError(`"${o.slice(0, 40)}…" is too long for a choice`);
-    if (!options.some((x) => x.toLowerCase() === o.toLowerCase())) options.push(o);
-  }
+    if (options.some((x) => x.toLowerCase() === o.toLowerCase())) return;
+    const extra = input.prices?.[i];
+    options.push(o);
+    prices.push(extra === undefined || extra === null || String(extra) === "" ? 0 : money(extra, `Price for ${o}`));
+  });
   if (options.length === 0) throw new InputError("Add at least one choice");
   if (options.length > 20) throw new InputError("An option can have at most 20 choices");
-  return { name, options };
+  return { name, options, prices };
 }
 
 export async function createOptionGroup(input: GroupInput): Promise<ActionResult<OptionGroup>> {
@@ -402,7 +408,7 @@ export async function createOptionGroup(input: GroupInput): Promise<ActionResult
           ...fields,
           sort: (last[0]?.sort ?? 0) + 1,
         })
-        .select("id, restaurant_id, name, options, sort")
+        .select("id, restaurant_id, name, options, prices, sort")
         .single(),
       "add the option",
     );
@@ -419,7 +425,7 @@ export async function updateOptionGroup(id: string, input: GroupInput): Promise<
         .update(groupFields(input))
         .eq("id", text(id, "Option"))
         .eq("restaurant_id", RESTAURANT_ID)
-        .select("id, restaurant_id, name, options, sort")
+        .select("id, restaurant_id, name, options, prices, sort")
         .single(),
       "save the option",
     );
@@ -517,7 +523,7 @@ function dishChoices(dish: MenuItem, groups: OptionGroup[], picked: unknown): Ch
         `The choices for ${dish.name} have changed. Remove it from your order and add it again.`,
       );
     }
-    return { groupId: g.id, group: g.name, choice };
+    return { groupId: g.id, group: g.name, choice, price: addOn(g, choice) };
   });
 }
 
@@ -544,12 +550,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
       if (!dish.available) throw new InputError(`${dish.name} is sold out today`);
       const quantity = Math.floor(Number(line.quantity));
       if (!(quantity >= 1 && quantity <= 99)) throw new InputError("Invalid quantity");
+      const choices = dishChoices(dish, groups, line.choices);
       return {
         itemId: dish.id,
         name: dish.name,
-        price: dish.price,
+        // One dish including what its choices add (e.g. Full chicken).
+        price: unitPrice(dish, choices, groups),
         quantity,
-        choices: dishChoices(dish, groups, line.choices),
+        choices,
         notes: optionalText(line.notes, "Item note", 300) ?? undefined,
       };
     });

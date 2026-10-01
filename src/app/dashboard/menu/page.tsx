@@ -6,6 +6,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
 import { reportFailure } from "@/lib/restaurant-data";
 import { shrinkImage } from "@/lib/shrink-image";
+import { choicesSummary } from "@/lib/pricing";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { currency } from "@/lib/format";
 import type { MenuItem, OptionGroup } from "@/lib/types";
@@ -151,7 +152,7 @@ export default function MenuManagerPage() {
                 <li key={g.id} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-[0.9375rem] font-medium">{g.name}</p>
-                    <p className="mt-0.5 text-[0.8125rem] text-ink-500">{g.options.join(" · ")}</p>
+                    <p className="mt-0.5 text-[0.8125rem] text-ink-500">{choicesSummary(g)}</p>
                     <p className="mt-0.5 text-xs text-ink-400">
                       {n === 0 ? "Not on any dishes yet" : `On ${n} ${n === 1 ? "dish" : "dishes"}`}
                     </p>
@@ -604,6 +605,12 @@ function OptionGroupEditor({
   const { items, categories, addOptionGroup, updateOptionGroup, setOptionGroupOnItems } = useDashboard();
   const [name, setName] = useState(group?.name ?? "");
   const [choicesRaw, setChoicesRaw] = useState(group?.options.join(", ") ?? "");
+  /** Extra charge typed for each choice, keyed by its lowercase name so it survives edits to the list. */
+  const [extras, setExtras] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (group?.options ?? []).map((o, i) => [o.toLowerCase(), group!.prices[i] ? group!.prices[i].toFixed(2) : ""]),
+    ),
+  );
   const [picked, setPicked] = useState<Set<string>>(new Set(initialItemIds));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -625,7 +632,13 @@ function OptionGroupEditor({
     setError("");
     setSaving(true);
     try {
-      const input = { name: name.trim(), options: choices };
+      const prices = choices.map((c) => {
+        const raw = (extras[c.toLowerCase()] ?? "").replace(/[$\s]/g, "");
+        const n = raw === "" ? 0 : Number(raw);
+        if (!Number.isFinite(n) || n < 0) throw new Error(`The extra charge for ${c} must be an amount, like 4.00`);
+        return Math.round(n * 100) / 100;
+      });
+      const input = { name: name.trim(), options: choices, prices };
       let id = group?.id;
       if (id) await updateOptionGroup(id, input);
       else id = (await addOptionGroup(input)).id;
@@ -689,19 +702,35 @@ function OptionGroupEditor({
               required
             />
             <p className="mt-1.5 text-xs text-ink-400">Put a comma between each choice.</p>
-            {choices.length > 0 && (
-              <div className="mt-2.5 flex flex-wrap gap-1.5" aria-label="Customers will see">
-                {choices.map((c) => (
-                  <span
-                    key={c}
-                    className="rounded-xs border border-cream-300 bg-white px-2.5 py-1 text-[0.8125rem] whitespace-nowrap"
-                  >
-                    {c}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
+
+          {choices.length > 0 && (
+            <fieldset>
+              <legend className="field-label">
+                Extra charge <span className="normal-case">(optional)</span>
+              </legend>
+              <div className="divide-y divide-cream-200 rounded-sm border border-cream-300 bg-white">
+                {choices.map((c) => {
+                  const key = c.toLowerCase();
+                  return (
+                    <label key={key} className="flex items-center gap-3 px-3.5 py-2">
+                      <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{c}</span>
+                      <span className="text-[0.875rem] text-ink-400">+$</span>
+                      <input
+                        value={extras[key] ?? ""}
+                        onChange={(e) => setExtras((x) => ({ ...x, [key]: e.target.value }))}
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        aria-label={`Extra charge for ${c}`}
+                        className="field-input h-9 w-24 py-0 text-right tabular-nums"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-xs text-ink-400">Leave blank if it costs nothing extra.</p>
+            </fieldset>
+          )}
 
           <fieldset>
             <legend className="field-label">
@@ -1085,7 +1114,7 @@ function ItemEditor({
                     />
                     <span className="min-w-0">
                       <span className="block text-[0.9375rem]">{g.name}</span>
-                      <span className="block truncate text-xs text-ink-500">{g.options.join(" · ")}</span>
+                      <span className="block truncate text-xs text-ink-500">{choicesSummary(g)}</span>
                     </span>
                   </label>
                   <button

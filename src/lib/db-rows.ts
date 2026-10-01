@@ -63,6 +63,7 @@ export type OptionGroupRow = {
   restaurant_id: string;
   name: string;
   options: string[];
+  prices: (number | string)[] | null;
   sort: number;
 };
 
@@ -165,6 +166,7 @@ export const optionGroupFromRow = (r: OptionGroupRow): OptionGroup => ({
   restaurantId: r.restaurant_id,
   name: r.name,
   options: r.options,
+  prices: r.options.map((_, i) => Number(r.prices?.[i] ?? 0)),
   sort: r.sort,
 });
 

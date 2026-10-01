@@ -9,6 +9,7 @@ import { Badge, SoldOutTag } from "@/components/ui/Badge";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { IconClose } from "@/components/ui/icons";
 import { useRestaurantData } from "@/lib/restaurant-data";
+import { addOn, addOnLabel, hasPricedChoices, unitPrice } from "@/lib/pricing";
 
 export function ItemDetailModal({
   item,
@@ -48,7 +49,14 @@ export function ItemDetailModal({
 
   const groups = optionGroups.filter((g) => item.optionGroupIds.includes(g.id));
   const missing = groups.find((g) => !g.options.includes(picked[g.id]));
-  const choices: Choice[] = groups.map((g) => ({ groupId: g.id, group: g.name, choice: picked[g.id] }));
+  const choices: Choice[] = groups
+    .filter((g) => g.options.includes(picked[g.id]))
+    .map((g) => ({ groupId: g.id, group: g.name, choice: picked[g.id], price: addOn(g, picked[g.id]) }));
+  // Until every priced choice is made, the price reads "From $X".
+  const price = unitPrice(item, choices, optionGroups);
+  const pricePending =
+    hasPricedChoices(item, optionGroups) &&
+    groups.some((g) => g.prices.some((p) => p > 0) && !g.options.includes(picked[g.id]));
 
   const add = () => {
     if (missing) return;
@@ -119,7 +127,10 @@ export function ItemDetailModal({
             <p className="mt-4 text-[0.9375rem] leading-relaxed text-ink-500">{item.description}</p>
           )}
 
-          <p className="mt-5 font-display text-2xl tabular-nums">{currency(item.price)}</p>
+          <p className="mt-5 font-display text-2xl tabular-nums">
+            {pricePending && <span className="text-lg text-ink-500">From </span>}
+            {currency(price)}
+          </p>
 
           {item.available ? (
             <>
@@ -129,6 +140,7 @@ export function ItemDetailModal({
                   <div className="flex flex-wrap gap-2">
                     {g.options.map((o) => {
                       const on = picked[g.id] === o;
+                      const extra = addOnLabel(addOn(g, o));
                       return (
                         <label
                           key={o}
@@ -147,6 +159,11 @@ export function ItemDetailModal({
                             className="sr-only"
                           />
                           {o}
+                          {extra && (
+                            <span className={`ml-1.5 tabular-nums ${on ? "text-cream/80" : "text-ink-500"}`}>
+                              {extra}
+                            </span>
+                          )}
                         </label>
                       );
                     })}
@@ -183,7 +200,7 @@ export function ItemDetailModal({
                   <span className="truncate">
                     {missing
                       ? `Choose ${missing.name.toLowerCase()}`
-                      : `Add to Order · ${currency(item.price * quantity)}`}
+                      : `Add to Order · ${currency(price * quantity)}`}
                   </span>
                 </button>
               </div>

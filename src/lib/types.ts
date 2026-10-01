@@ -82,6 +82,8 @@ export interface OptionGroup {
   restaurantId: ID;
   name: string;
   options: string[];
+  /** What each option adds to the dish price, lined up with `options`. */
+  prices: number[];
   sort: number;
 }
 
@@ -91,6 +93,8 @@ export interface Choice {
   /** The group's name when it was picked, e.g. "Spice level". */
   group: string;
   choice: string;
+  /** What this choice added to the dish price when it was picked. */
+  price?: number;
 }
 
 /* ------------------------------------------------------------------ */

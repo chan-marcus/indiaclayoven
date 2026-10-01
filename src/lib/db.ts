@@ -51,7 +51,7 @@ export const getMenuItems = cache(async () => {
 export const getOptionGroups = cache(async () => {
   const res = await supabase
     .from("option_groups")
-    .select("id, restaurant_id, name, options, sort")
+    .select("id, restaurant_id, name, options, prices, sort")
     .eq("restaurant_id", RESTAURANT_ID)
     .order("sort");
   return rows<OptionGroupRow[]>(res, "option groups").map(optionGroupFromRow);

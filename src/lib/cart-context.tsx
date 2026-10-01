@@ -12,6 +12,7 @@ import {
 } from "react";
 import type { CartLine, Choice, MenuItem } from "@/lib/types";
 import { useRestaurantData } from "@/lib/restaurant-data";
+import { unitPrice } from "@/lib/pricing";
 
 /* ------------------------------------------------------------------ */
 /* Reducer                                                             */
@@ -168,17 +169,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setPulse((p) => p + 1);
   }, []);
 
-  const { settings, items } = useRestaurantData();
+  const { settings, items, optionGroups } = useRestaurantData();
 
-  // Price (and picture) every line from the live menu, so changes made in the
-  // dashboard reach carts already saved in the browser.
+  // Price (and picture) every line from the live menu, including what its
+  // choices add, so changes made in the dashboard reach carts already saved
+  // in the browser.
   const lines = useMemo(() => {
     const byId = new Map(items.map((i) => [i.id, i]));
     return state.lines.map((l) => {
       const live = byId.get(l.itemId);
-      return live ? { ...l, price: live.price, image: live.image } : l;
+      return live ? { ...l, price: unitPrice(live, l.choices, optionGroups), image: live.image } : l;
     });
-  }, [state.lines, items]);
+  }, [state.lines, items, optionGroups]);
 
   const subtotal = useMemo(() => lines.reduce((sum, l) => sum + l.price * l.quantity, 0), [lines]);
   const count = useMemo(
