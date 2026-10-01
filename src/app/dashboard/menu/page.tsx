@@ -33,7 +33,12 @@ export default function MenuManagerPage() {
   const [confirmDelete, setConfirmDelete] = useState<MenuItem | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   /** The option group being edited (null while adding one) and its dishes. */
-  const [groupEditor, setGroupEditor] = useState<{ group: OptionGroup | null; itemIds: string[] } | null>(null);
+  const [groupEditor, setGroupEditor] = useState<{
+    group: OptionGroup | null;
+    itemIds: string[];
+    /** Lets the dish editor underneath catch up after a save. */
+    onSaved?: GroupSaved;
+  } | null>(null);
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<OptionGroup | null>(null);
 
   const rows = useMemo(() => {
@@ -337,7 +342,14 @@ export default function MenuManagerPage() {
           item={editing}
           categories={categories}
           optionGroups={optionGroups}
-          onEditGroup={(g) => setGroupEditor({ group: g, itemIds: usedBy(g.id).map((i) => i.id) })}
+          openGroupEditor={(g, onSaved) =>
+            setGroupEditor({
+              group: g,
+              // A new option starts ticked for the dish it was added from.
+              itemIds: g ? usedBy(g.id).map((i) => i.id) : editing ? [editing.id] : [],
+              onSaved,
+            })
+          }
           onClose={() => {
             setEditing(null);
             setCreating(false);
@@ -369,7 +381,8 @@ export default function MenuManagerPage() {
           group={groupEditor.group}
           initialItemIds={groupEditor.itemIds}
           onClose={() => setGroupEditor(null)}
-          onSaved={() => {
+          onSaved={(id, itemIds) => {
+            groupEditor.onSaved?.(id, itemIds);
             setGroupEditor(null);
             setSelected(new Set());
           }}
@@ -504,7 +517,7 @@ function OptionGroupEditor({
   group: OptionGroup | null;
   initialItemIds: string[];
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: GroupSaved;
 }) {
   const { items, categories, addOptionGroup, updateOptionGroup, setOptionGroupOnItems } = useDashboard();
   const [name, setName] = useState(group?.name ?? "");
@@ -540,7 +553,7 @@ function OptionGroupEditor({
       const remove = [...before].filter((i) => !picked.has(i));
       if (add.length) await setOptionGroupOnItems(id, add, true);
       if (remove.length) await setOptionGroupOnItems(id, remove, false);
-      onSaved();
+      onSaved(id, [...picked]);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setSaving(false);
@@ -734,19 +747,22 @@ function AvailabilityToggle({
   );
 }
 
+/** Called after an option group is saved, with the dishes it's now on. */
+type GroupSaved = (groupId: string, itemIds: string[]) => void;
+
 function ItemEditor({
   item,
   categories,
   optionGroups,
-  onEditGroup,
+  openGroupEditor,
   onClose,
   onSave,
 }: {
   item: MenuItem | null;
   categories: { id: string; name: string }[];
   optionGroups: OptionGroup[];
-  /** Opens the shared editor for an option group, above this one. */
-  onEditGroup: (group: OptionGroup) => void;
+  /** Opens the shared option editor above this one; null adds a new option. */
+  openGroupEditor: (group: OptionGroup | null, onSaved: GroupSaved) => void;
   onClose: () => void;
   /** `photo` is a new, already-resized picture, "remove" to take it off, or null to leave it. */
   onSave: (patch: Partial<MenuItem>, photo: Blob | "remove" | null) => Promise<void>;
@@ -765,6 +781,22 @@ function ItemEditor({
   const savedGroupIds = items.find((i) => i.id === item?.id)?.optionGroupIds ?? [];
   const [pickedGroupIds, setPickedGroupIds] = useState<string[] | null>(null);
   const groupIds = pickedGroupIds ?? savedGroupIds;
+
+  // Once the owner has ticked boxes here, keep those picks in step with what
+  // the option editor just saved for this dish.
+  const followGroup =
+    (added: boolean): GroupSaved =>
+    (id, itemIds) => {
+      if (!item) {
+        // A dish not saved yet: an option added from it starts ticked.
+        if (added) setPickedGroupIds((cur) => [...(cur ?? []), id]);
+        return;
+      }
+      const on = itemIds.includes(item.id);
+      setPickedGroupIds((cur) =>
+        cur === null ? null : on ? [...cur.filter((x) => x !== id), id] : cur.filter((x) => x !== id),
+      );
+    };
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   /** The owner pressed Remove on the dish's saved photo. */
@@ -945,47 +977,53 @@ function ItemEditor({
             <span className="text-[0.9375rem]">Available to order right now</span>
           </label>
 
-          {optionGroups.length > 0 && (
-            <fieldset>
-              <legend className="field-label">Options the customer picks</legend>
-              <div className="grid gap-2">
-                {optionGroups.map((g) => (
-                  <div
-                    key={g.id}
-                    className="flex items-center gap-2 rounded-sm border border-cream-300 bg-white pr-2"
+          <fieldset>
+            <legend className="field-label">Options the customer picks</legend>
+            <div className="grid gap-2">
+              {optionGroups.map((g) => (
+                <div
+                  key={g.id}
+                  className="flex items-center gap-2 rounded-sm border border-cream-300 bg-white pr-2"
+                >
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-2.5 pl-3.5">
+                    <input
+                      type="checkbox"
+                      checked={groupIds.includes(g.id)}
+                      onChange={(e) =>
+                        setPickedGroupIds(
+                          e.target.checked
+                            ? [...groupIds.filter((x) => x !== g.id), g.id]
+                            : groupIds.filter((x) => x !== g.id),
+                        )
+                      }
+                      className="h-4 w-4 shrink-0 accent-[#6b2318]"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-[0.9375rem]">{g.name}</span>
+                      <span className="block truncate text-xs text-ink-500">{g.options.join(" · ")}</span>
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => openGroupEditor(g, followGroup(false))}
+                    aria-label={`Edit ${g.name}`}
+                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xs px-2.5 text-[0.8125rem] text-ink-500 transition-colors hover:bg-cream-100 hover:text-ink"
                   >
-                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-2.5 pl-3.5">
-                      <input
-                        type="checkbox"
-                        checked={groupIds.includes(g.id)}
-                        onChange={(e) =>
-                          setPickedGroupIds(
-                            e.target.checked
-                              ? [...groupIds.filter((x) => x !== g.id), g.id]
-                              : groupIds.filter((x) => x !== g.id),
-                          )
-                        }
-                        className="h-4 w-4 shrink-0 accent-[#6b2318]"
-                      />
-                      <span className="min-w-0">
-                        <span className="block text-[0.9375rem]">{g.name}</span>
-                        <span className="block truncate text-xs text-ink-500">{g.options.join(" · ")}</span>
-                      </span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => onEditGroup(g)}
-                      aria-label={`Edit ${g.name}`}
-                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xs px-2.5 text-[0.8125rem] text-ink-500 transition-colors hover:bg-cream-100 hover:text-ink"
-                    >
-                      <IconEdit className="h-4 w-4" />
-                      Edit
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </fieldset>
-          )}
+                    <IconEdit className="h-4 w-4" />
+                    Edit
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => openGroupEditor(null, followGroup(true))}
+                className="inline-flex items-center gap-1.5 justify-self-start rounded-xs px-1 py-1.5 text-[0.8125rem] text-ink-500 transition-colors hover:text-ink"
+              >
+                <IconPlus className="h-4 w-4" />
+                Add Options
+              </button>
+            </div>
+          </fieldset>
         </div>
 
         <div className="mt-6 flex gap-3">
