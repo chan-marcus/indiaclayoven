@@ -1,6 +1,6 @@
 /*
- * Every piece of website wording the owner can edit from Dashboard → Website
- * text, grouped the way the dashboard shows it. The `text` here is the
+ * Every piece of website wording the owner can edit from Dashboard → Edit
+ * Website, grouped the way the dashboard shows it. The `text` here is the
  * default; edits are stored in Supabase (site_content) and override it.
  *
  * In long fields a new line starts a new line on the page. {phone} and

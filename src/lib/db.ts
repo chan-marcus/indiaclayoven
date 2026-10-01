@@ -55,7 +55,7 @@ export const getOrders = cache(async () => {
   return rows<OrderRow[]>(res, "orders").map(orderFromRow);
 });
 
-/** Website wording: defaults with the owner's edits from Dashboard → Website text. */
+/** Website wording: defaults with the owner's edits from Dashboard → Edit Website. */
 export const getSiteText = cache(async () => {
   const res = await supabase.from("site_content").select("key, value").eq("restaurant_id", RESTAURANT_ID);
   const saved = rows<{ key: string; value: string }[]>(res, "website text");

@@ -468,7 +468,7 @@ export async function updateRestaurant(input: SettingsInput): Promise<ActionResu
 }
 
 /* ------------------------------------------------------------------ */
-/* Website text (owner)                                                */
+/* Edit Website (owner)                                                */
 /* ------------------------------------------------------------------ */
 
 /**

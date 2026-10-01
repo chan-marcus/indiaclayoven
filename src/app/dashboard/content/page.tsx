@@ -37,7 +37,7 @@ export default function WebsiteTextPage() {
 
   return (
     <div className="container-page py-8 pb-28">
-      <h1 className="font-display text-3xl">Website text</h1>
+      <h1 className="font-display text-3xl">Edit Website</h1>
       <p className="mt-2 max-w-2xl text-[0.9375rem] leading-relaxed text-ink-500">
         <span className="block">Edit the wording on any page.</span>
         <span className="block">Press Enter for a new line on the page.</span>
