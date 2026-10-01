@@ -426,9 +426,15 @@ export default function MenuManagerPage() {
 
       {confirmDelete && (
         <ConfirmDialog
-          title={`Remove “${confirmDelete.name}”?`}
-          body="This takes it off your website straight away. You can always add it back."
-          confirmLabel="Remove dish"
+          title={`Delete “${confirmDelete.name}”?`}
+          body={
+            <>
+              <span className="block">It comes off your website straight away.</span>
+              {confirmDelete.image && <span className="block">Its photo is deleted too.</span>}
+              <span className="block">This can’t be undone.</span>
+            </>
+          }
+          confirmLabel="Delete dish"
           onCancel={() => setConfirmDelete(null)}
           onConfirm={() => {
             deleteItem(confirmDelete.id);
@@ -442,11 +448,12 @@ export default function MenuManagerPage() {
           title={`Delete “${confirmDeleteGroup.name}”?`}
           body={
             <>
-              <span className="block">It comes off every dish that uses it.</span>
+              <span className="block">{usedByText(usedBy(confirmDeleteGroup.id).length)}</span>
               <span className="block">Orders already placed keep their choices.</span>
+              <span className="block">This can’t be undone.</span>
             </>
           }
-          confirmLabel="Delete"
+          confirmLabel="Delete option"
           onCancel={() => setConfirmDeleteGroup(null)}
           onConfirm={async () => {
             const g = confirmDeleteGroup;
@@ -464,6 +471,11 @@ export default function MenuManagerPage() {
 }
 
 /* ------------------------------------------------------------------ */
+
+const usedByText = (n: number) =>
+  n === 0
+    ? "It isn’t on any dishes yet."
+    : `It comes off the ${n} ${n === 1 ? "dish that uses" : "dishes that use"} it.`;
 
 /** Turns "Mild, Medium, Hot" (or one per line) into a clean list. */
 function parseChoices(raw: string): string[] {
