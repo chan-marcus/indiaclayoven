@@ -9,7 +9,7 @@ import { Badge, SoldOutTag } from "@/components/ui/Badge";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { IconClose } from "@/components/ui/icons";
 import { useRestaurantData } from "@/lib/restaurant-data";
-import { addOn, addOnLabel, hasPricedChoices, unitPrice } from "@/lib/pricing";
+import { choiceLabel, choicePrice, sizeGroup, sizePrice, unitPrice } from "@/lib/pricing";
 
 export function ItemDetailModal({
   item,
@@ -23,7 +23,7 @@ export function ItemDetailModal({
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   /** Option group id → the option picked. */
-  const [picked, setPicked] = useState<Record<string, string>>({});
+  const [pickedRaw, setPicked] = useState<Record<string, string>>({});
 
   // Reset the form each time a different dish is opened.
   useEffect(() => {
@@ -48,15 +48,21 @@ export function ItemDetailModal({
   if (!item) return null;
 
   const groups = optionGroups.filter((g) => item.optionGroupIds.includes(g.id));
+  // A size (Half / Whole) starts on its cheapest choice, like a printed menu;
+  // other options wait for the customer to pick.
+  const size = sizeGroup(item, optionGroups);
+  const cheapestSize =
+    size && size.options.reduce((a, o) => (sizePrice(item, size, o) < sizePrice(item, size, a) ? o : a));
+  const picked = { ...(size && cheapestSize ? { [size.id]: cheapestSize } : {}), ...pickedRaw };
   const missing = groups.find((g) => !g.options.includes(picked[g.id]));
   const choices: Choice[] = groups
     .filter((g) => g.options.includes(picked[g.id]))
-    .map((g) => ({ groupId: g.id, group: g.name, choice: picked[g.id], price: addOn(g, picked[g.id]) }));
-  // Until every priced choice is made, the price reads "From $X".
+    .map((g) => ({ groupId: g.id, group: g.name, choice: picked[g.id], price: choicePrice(item, g, picked[g.id]) }));
+  // Until every extra that costs something is picked, the price reads "From $X".
   const price = unitPrice(item, choices, optionGroups);
-  const pricePending =
-    hasPricedChoices(item, optionGroups) &&
-    groups.some((g) => g.prices.some((p) => p > 0) && !g.options.includes(picked[g.id]));
+  const pricePending = groups.some(
+    (g) => !g.setsPrice && g.prices.some((p) => p > 0) && !g.options.includes(picked[g.id]),
+  );
 
   const add = () => {
     if (missing) return;
@@ -140,7 +146,7 @@ export function ItemDetailModal({
                   <div className="flex flex-wrap gap-2">
                     {g.options.map((o) => {
                       const on = picked[g.id] === o;
-                      const extra = addOnLabel(addOn(g, o));
+                      const extra = choiceLabel(item, g, o);
                       return (
                         <label
                           key={o}

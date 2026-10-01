@@ -30,7 +30,7 @@ import {
   type RestaurantRow,
 } from "@/lib/db-rows";
 import type { ActionResult } from "@/lib/action-result";
-import { addOn, unitPrice } from "@/lib/pricing";
+import { choicePrice, unitPrice } from "@/lib/pricing";
 import { sendOrderEmail } from "@/lib/email/order-email";
 import type {
   Category,
@@ -126,8 +126,10 @@ export async function setItemAvailability(id: string, available: boolean): Promi
 
 type ItemInput = Pick<
   MenuItem,
-  "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds"
+  "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds" | "choicePrices"
 >;
+
+type GroupRef = { id: string; name: string; options: string[]; sets_price: boolean };
 
 /** Re-reads a dish with its option groups attached. */
 async function loadItem(id: string): Promise<MenuItem> {
@@ -143,34 +145,76 @@ async function loadItem(id: string): Promise<MenuItem> {
   return menuItemFromRow(row);
 }
 
-/** Checks group ids belong to this restaurant; returns them deduplicated. */
-async function ownGroupIds(value: unknown): Promise<string[]> {
+/** Loads these option groups, checking they belong to this restaurant. Keeps the given order. */
+async function ownGroups(value: unknown): Promise<GroupRef[]> {
   if (!Array.isArray(value)) throw new InputError("Invalid options");
   const ids = [...new Set(value.map((v) => text(v, "Option group", 100)))];
   if (ids.length === 0) return [];
-  const found = check<{ id: string }[]>(
-    await supabase.from("option_groups").select("id").eq("restaurant_id", RESTAURANT_ID).in("id", ids),
+  const found = check<GroupRef[]>(
+    await supabase
+      .from("option_groups")
+      .select("id, name, options, sets_price")
+      .eq("restaurant_id", RESTAURANT_ID)
+      .in("id", ids),
     "check the options",
   );
   if (found.length !== ids.length) throw new InputError("One of those options was deleted. Reload and try again.");
-  return ids;
+  return ids.map((id) => found.find((g) => g.id === id)!);
 }
 
-/** Replaces the option groups attached to one dish. */
-async function replaceItemGroups(itemId: string, groupIds: string[]) {
+/** A dish's price for every choice of a size option; all are required. */
+function sizePrices(group: GroupRef, raw: unknown): number[] {
+  const list = Array.isArray(raw) ? raw : [];
+  return group.options.map((o, i) => {
+    const v = list[i];
+    if (v === undefined || v === null || v === "") throw new InputError(`Set a price for ${o}`);
+    return money(v, `Price for ${o}`);
+  });
+}
+
+/**
+ * Replaces the option groups on one dish. A size option keeps the dish's
+ * existing prices unless new ones are given. Returns the size prices in
+ * force, so the dish price can follow the cheapest.
+ */
+async function replaceItemGroups(
+  itemId: string,
+  groups: GroupRef[],
+  choicePrices?: Record<string, unknown>,
+): Promise<number[] | null> {
+  const sizes = groups.filter((g) => g.sets_price);
+  if (sizes.length > 1) {
+    throw new InputError(`A dish can have only one option that sets its price (${sizes.map((g) => g.name).join(", ")})`);
+  }
+  const existing = check<{ group_id: string; prices: number[] | null }[]>(
+    await supabase.from("menu_item_option_groups").select("group_id, prices").eq("item_id", itemId),
+    "save the dish's options",
+  );
+  const size = sizes[0];
+  const given = size && choicePrices && size.id in choicePrices ? sizePrices(size, choicePrices[size.id]) : null;
+  const kept = size ? (existing.find((r) => r.group_id === size.id)?.prices ?? null) : null;
+  const sizeRow = given ?? (kept ? kept.map(Number) : null);
+
   check(
     await supabase.from("menu_item_option_groups").delete().eq("item_id", itemId),
     "save the dish's options",
   );
-  if (groupIds.length) {
+  if (groups.length) {
     check(
-      await supabase
-        .from("menu_item_option_groups")
-        .insert(groupIds.map((group_id) => ({ item_id: itemId, group_id }))),
+      await supabase.from("menu_item_option_groups").insert(
+        groups.map((g) => ({ item_id: itemId, group_id: g.id, prices: g.sets_price ? sizeRow : null })),
+      ),
       "save the dish's options",
     );
   }
+  return sizeRow;
 }
+
+/** A dish with sizes is listed at its cheapest one. */
+const cheapest = (prices: (number | null)[] | null) => {
+  const set = (prices ?? []).filter((p): p is number => p !== null);
+  return set.length ? Math.min(...set) : null;
+};
 
 export async function updateMenuItem(id: string, patch: Partial<ItemInput>): Promise<ActionResult<MenuItem>> {
   return run(async () => {
@@ -181,7 +225,7 @@ export async function updateMenuItem(id: string, patch: Partial<ItemInput>): Pro
     if ("price" in patch) update.price = money(patch.price, "Price");
     if ("categoryId" in patch) update.category_id = text(patch.categoryId, "Category");
     if ("available" in patch) update.available = Boolean(patch.available);
-    const groupIds = "optionGroupIds" in patch ? await ownGroupIds(patch.optionGroupIds) : null;
+    const groups = "optionGroupIds" in patch ? await ownGroups(patch.optionGroupIds) : null;
 
     // Also confirms the dish belongs to this restaurant before its options change.
     const dish = supabase.from("menu_items");
@@ -191,17 +235,37 @@ export async function updateMenuItem(id: string, patch: Partial<ItemInput>): Pro
         : await dish.select("id").eq("id", itemId).eq("restaurant_id", RESTAURANT_ID).single(),
       "save the dish",
     );
-    if (groupIds) await replaceItemGroups(itemId, groupIds);
+
+    // New size prices with the options unchanged: re-save the current options.
+    const attach =
+      groups ??
+      ("choicePrices" in patch ? await ownGroups((await loadItem(itemId)).optionGroupIds) : null);
+    if (attach) {
+      const low = cheapest(await replaceItemGroups(itemId, attach, patch.choicePrices));
+      if (low !== null) {
+        check(
+          await supabase.from("menu_items").update({ price: low }).eq("id", itemId).eq("restaurant_id", RESTAURANT_ID),
+          "save the dish",
+        );
+      }
+    }
     refreshSite();
     return loadItem(itemId);
   });
 }
 
 export async function createMenuItem(
-  input: Omit<ItemInput, "optionGroupIds"> & { optionGroupIds?: string[]; image?: string },
+  input: Omit<ItemInput, "optionGroupIds" | "choicePrices"> & {
+    optionGroupIds?: string[];
+    choicePrices?: MenuItem["choicePrices"];
+    image?: string;
+  },
 ): Promise<ActionResult<MenuItem>> {
   return run(async () => {
-    const groupIds = await ownGroupIds(input.optionGroupIds ?? []);
+    const groups = await ownGroups(input.optionGroupIds ?? []);
+    const size = groups.find((g) => g.sets_price);
+    // With sizes, the dish is listed at its cheapest one.
+    const price = size ? Math.min(...sizePrices(size, input.choicePrices?.[size.id])) : money(input.price, "Price");
     const last = check<{ sort: number }[]>(
       await supabase
         .from("menu_items")
@@ -221,7 +285,7 @@ export async function createMenuItem(
           category_id: text(input.categoryId, "Category"),
           name: text(input.name, "Name", 120),
           description: optionalText(input.description, "Description"),
-          price: money(input.price, "Price"),
+          price,
           image: input.image?.startsWith("/images/") ? input.image : null,
           available: input.available ?? true,
           badges: [],
@@ -232,7 +296,7 @@ export async function createMenuItem(
         .single(),
       "add the dish",
     );
-    await replaceItemGroups(row.id, groupIds);
+    await replaceItemGroups(row.id, groups, input.choicePrices);
     refreshSite();
     return loadItem(row.id);
   });
@@ -365,8 +429,11 @@ export async function createCategory(name: string): Promise<ActionResult<Categor
 /* Option groups (owner)                                               */
 /* ------------------------------------------------------------------ */
 
-/** `prices[i]` is what `options[i]` adds to the dish price; missing means 0. */
-type GroupInput = { name: string; options: string[]; prices?: number[] };
+/**
+ * `prices[i]` is what `options[i]` adds to the dish price; missing means 0.
+ * With `setsPrice`, each dish sets its own price per choice instead.
+ */
+type GroupInput = { name: string; options: string[]; prices?: number[]; setsPrice?: boolean };
 
 function groupFields(input: GroupInput) {
   const name = text(input?.name, "Option name", 60);
@@ -384,7 +451,41 @@ function groupFields(input: GroupInput) {
   });
   if (options.length === 0) throw new InputError("Add at least one choice");
   if (options.length > 20) throw new InputError("An option can have at most 20 choices");
-  return { name, options, prices };
+  const sets_price = Boolean(input.setsPrice);
+  return { name, options, prices: sets_price ? options.map(() => 0) : prices, sets_price };
+}
+
+/** Dishes among `itemIds` that already have a different price-setting option. */
+async function sizeConflicts(groupId: string, itemIds: string[]): Promise<string[]> {
+  if (itemIds.length === 0) return [];
+  const rows = check<{ menu_items: { name: string } }[]>(
+    await supabase
+      .from("menu_item_option_groups")
+      .select("menu_items!inner(name), option_groups!inner(sets_price)")
+      .in("item_id", itemIds)
+      .neq("group_id", groupId)
+      .eq("option_groups.sets_price", true),
+    "check the dishes",
+  );
+  return rows.map((r) => r.menu_items.name);
+}
+
+const conflictMessage = (names: string[]) =>
+  `${names.slice(0, 3).join(", ")}${names.length > 3 ? ` and ${names.length - 3} more` : ""} already ${
+    names.length === 1 ? "has" : "have"
+  } an option that sets the price. A dish can have only one.`;
+
+/**
+ * Keeps each dish's size prices with the right choice after the choices are
+ * edited: matched by name, or by position when a choice was renamed in place.
+ */
+function remapPrices(before: string[], after: string[], prices: (number | null)[]): (number | null)[] {
+  return after.map((o, i) => {
+    const j = before.indexOf(o);
+    if (j !== -1) return prices[j] ?? null;
+    if (i < before.length && !after.includes(before[i])) return prices[i] ?? null;
+    return null;
+  });
 }
 
 export async function createOptionGroup(input: GroupInput): Promise<ActionResult<OptionGroup>> {
@@ -408,7 +509,7 @@ export async function createOptionGroup(input: GroupInput): Promise<ActionResult
           ...fields,
           sort: (last[0]?.sort ?? 0) + 1,
         })
-        .select("id, restaurant_id, name, options, prices, sort")
+        .select("id, restaurant_id, name, options, prices, sets_price, sort")
         .single(),
       "add the option",
     );
@@ -419,16 +520,55 @@ export async function createOptionGroup(input: GroupInput): Promise<ActionResult
 
 export async function updateOptionGroup(id: string, input: GroupInput): Promise<ActionResult<OptionGroup>> {
   return run(async () => {
+    const [before] = await ownGroups([id]);
+    const fields = groupFields(input);
+    const links = check<{ item_id: string; prices: (number | string | null)[] | null }[]>(
+      await supabase.from("menu_item_option_groups").select("item_id, prices").eq("group_id", before.id),
+      "save the option",
+    );
+    if (fields.sets_price && !before.sets_price) {
+      const clash = await sizeConflicts(before.id, links.map((l) => l.item_id));
+      if (clash.length) throw new InputError(conflictMessage(clash));
+    }
+
     const row = check<OptionGroupRow>(
       await supabase
         .from("option_groups")
-        .update(groupFields(input))
-        .eq("id", text(id, "Option"))
+        .update(fields)
+        .eq("id", before.id)
         .eq("restaurant_id", RESTAURANT_ID)
-        .select("id, restaurant_id, name, options, prices, sort")
+        .select("id, restaurant_id, name, options, prices, sets_price, sort")
         .single(),
       "save the option",
     );
+
+    // Dishes' own prices follow their choices, and each dish stays listed
+    // at its cheapest size.
+    if (fields.sets_price) {
+      for (const link of links) {
+        if (!link.prices) continue;
+        const prices = remapPrices(before.options, fields.options, link.prices.map((p) => (p === null ? null : Number(p))));
+        check(
+          await supabase
+            .from("menu_item_option_groups")
+            .update({ prices })
+            .eq("item_id", link.item_id)
+            .eq("group_id", before.id),
+          "save the option",
+        );
+        const low = cheapest(prices);
+        if (low !== null) {
+          check(
+            await supabase
+              .from("menu_items")
+              .update({ price: low })
+              .eq("id", link.item_id)
+              .eq("restaurant_id", RESTAURANT_ID),
+            "save the option",
+          );
+        }
+      }
+    }
     refreshSite();
     return optionGroupFromRow(row);
   });
@@ -456,7 +596,8 @@ export async function setOptionGroupOnItems(
   attached: boolean,
 ): Promise<ActionResult<void>> {
   return run(async () => {
-    const [gid] = await ownGroupIds([groupId]);
+    const [group] = await ownGroups([groupId]);
+    const gid = group.id;
     if (!Array.isArray(itemIds) || itemIds.length === 0) throw new InputError("Select at least one dish");
     if (itemIds.length > 500) throw new InputError("Too many dishes selected");
     const ids = [...new Set(itemIds.map((i) => text(i, "Item", 100)))];
@@ -468,6 +609,10 @@ export async function setOptionGroupOnItems(
     if (valid.length === 0) throw new InputError("Those dishes are no longer on the menu");
 
     if (attached) {
+      if (group.sets_price) {
+        const clash = await sizeConflicts(gid, valid);
+        if (clash.length) throw new InputError(conflictMessage(clash));
+      }
       check(
         await supabase
           .from("menu_item_option_groups")
@@ -523,7 +668,7 @@ function dishChoices(dish: MenuItem, groups: OptionGroup[], picked: unknown): Ch
         `The choices for ${dish.name} have changed. Remove it from your order and add it again.`,
       );
     }
-    return { groupId: g.id, group: g.name, choice, price: addOn(g, choice) };
+    return { groupId: g.id, group: g.name, choice, price: choicePrice(dish, g, choice) };
   });
 }
 

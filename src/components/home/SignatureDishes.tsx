@@ -1,7 +1,7 @@
 import { DishImage } from "@/components/ui/DishImage";
 import Link from "next/link";
 import { getCategories, getMenuItems, getOptionGroups, getSiteText } from "@/lib/db";
-import { hasPricedChoices } from "@/lib/pricing";
+import { fromPrice, hasPricedChoices } from "@/lib/pricing";
 import { currency } from "@/lib/format";
 import { BadgeOnDark } from "@/components/ui/Badge";
 import { IconArrowRight } from "@/components/ui/icons";
@@ -83,7 +83,7 @@ export async function SignatureDishes() {
               <div className="mt-3 flex items-center justify-between border-t border-cream-200 pt-3">
                 <span className="text-[0.9375rem] font-medium tabular-nums">
                   {hasPricedChoices(dish, groups) && "From "}
-                  {currency(dish.price)}
+                  {currency(fromPrice(dish, groups))}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-[0.8125rem] font-medium text-gold">
                   Add to order

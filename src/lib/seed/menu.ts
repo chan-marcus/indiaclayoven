@@ -59,6 +59,7 @@ const item = (
   available: opts.available ?? true,
   badges: opts.badges ?? [],
   optionGroupIds: [],
+  choicePrices: {},
   signature: opts.signature,
   sort: ++seq,
 });

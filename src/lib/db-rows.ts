@@ -52,11 +52,11 @@ export type MenuItemRow = {
 
 /** A menu item as selected with its attached option groups. */
 export type MenuItemWithGroupsRow = MenuItemRow & {
-  menu_item_option_groups?: { group_id: string }[];
+  menu_item_option_groups?: { group_id: string; prices: (number | string | null)[] | null }[];
 };
 
 /** Select string that loads a menu item with its option groups. */
-export const MENU_ITEM_SELECT = "*, menu_item_option_groups(group_id)";
+export const MENU_ITEM_SELECT = "*, menu_item_option_groups(group_id, prices)";
 
 export type OptionGroupRow = {
   id: string;
@@ -64,6 +64,7 @@ export type OptionGroupRow = {
   name: string;
   options: string[];
   prices: (number | string)[] | null;
+  sets_price: boolean;
   sort: number;
 };
 
@@ -145,6 +146,11 @@ export const menuItemFromRow = (r: MenuItemWithGroupsRow): MenuItem => ({
   signature: r.signature || undefined,
   sort: r.sort,
   optionGroupIds: (r.menu_item_option_groups ?? []).map((g) => g.group_id),
+  choicePrices: Object.fromEntries(
+    (r.menu_item_option_groups ?? [])
+      .filter((g) => g.prices)
+      .map((g) => [g.group_id, g.prices!.map((p) => (p === null ? null : Number(p)))]),
+  ),
 });
 
 export const menuItemToRow = (i: MenuItem): MenuItemRow => ({
@@ -167,6 +173,7 @@ export const optionGroupFromRow = (r: OptionGroupRow): OptionGroup => ({
   name: r.name,
   options: r.options,
   prices: r.options.map((_, i) => Number(r.prices?.[i] ?? 0)),
+  setsPrice: r.sets_price,
   sort: r.sort,
 });
 

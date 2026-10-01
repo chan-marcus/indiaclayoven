@@ -44,9 +44,9 @@ export type PublicData = {
 
 type ItemInput = Pick<
   MenuItem,
-  "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds"
+  "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds" | "choicePrices"
 >;
-type GroupInput = Pick<OptionGroup, "name" | "options" | "prices">;
+type GroupInput = Pick<OptionGroup, "name" | "options" | "prices" | "setsPrice">;
 type SettingsInput = Parameters<typeof updateRestaurant>[0];
 
 interface DataValue extends PublicData {

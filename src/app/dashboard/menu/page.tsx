@@ -6,7 +6,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
 import { reportFailure } from "@/lib/restaurant-data";
 import { shrinkImage } from "@/lib/shrink-image";
-import { addOnLabel, choicesSummary } from "@/lib/pricing";
+import { addOnLabel, choicesSummary, fromPrice, hasPricedChoices } from "@/lib/pricing";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { currency } from "@/lib/format";
 import type { MenuItem, OptionGroup } from "@/lib/types";
@@ -64,6 +64,8 @@ export default function MenuManagerPage() {
     if (other.length) out.push({ id: "other", name: "Other", dishes: other });
     return out.filter((s) => s.dishes.length > 0);
   }, [rows, categories]);
+  const priceText = (item: MenuItem) =>
+    `${hasPricedChoices(item, optionGroups) ? "From " : ""}${currency(fromPrice(item, optionGroups))}`;
   const groupsOf = (item: MenuItem) => optionGroups.filter((g) => item.optionGroupIds.includes(g.id));
   const usedBy = (groupId: string) => items.filter((i) => i.optionGroupIds.includes(groupId));
 
@@ -151,7 +153,14 @@ export default function MenuManagerPage() {
               return (
                 <li key={g.id} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[0.9375rem] font-medium">{g.name}</p>
+                    <p className="text-[0.9375rem] font-medium">
+                      {g.name}
+                      {g.setsPrice && (
+                        <span className="ml-2 rounded-xs bg-gold-soft px-1.5 py-0.5 align-middle text-[0.6875rem] font-normal whitespace-nowrap text-ink-700">
+                          Price per dish
+                        </span>
+                      )}
+                    </p>
                     <p className="mt-0.5 text-[0.8125rem] text-ink-500">{choicesSummary(g)}</p>
                     <p className="mt-0.5 text-xs text-ink-400">
                       {n === 0 ? "Not on any dishes yet" : `On ${n} ${n === 1 ? "dish" : "dishes"}`}
@@ -297,13 +306,13 @@ export default function MenuManagerPage() {
                           )}
                           {/* Price inline on small screens */}
                           <p className="mt-1 text-[0.8125rem] text-ink-400 lg:hidden">
-                            {currency(item.price)}
+                            {priceText(item)}
                           </p>
                         </div>
                       </div>
 
                       <p className="hidden text-[0.9375rem] tabular-nums lg:block">
-                        {currency(item.price)}
+                        {priceText(item)}
                       </p>
 
                       {/* Availability toggle */}
@@ -405,6 +414,7 @@ export default function MenuManagerPage() {
                 categoryId: patch.categoryId ?? categories[0].id,
                 available: patch.available ?? true,
                 optionGroupIds: patch.optionGroupIds ?? [],
+                choicePrices: patch.choicePrices ?? {},
               });
               if (created && photo instanceof Blob) await uploadItemImage(created.id, photo);
             }
@@ -616,6 +626,8 @@ function OptionGroupEditor({
   const [error, setError] = useState("");
   /** Extra charges are tucked away until the owner opens them. */
   const [showExtras, setShowExtras] = useState(false);
+  /** Each choice has its own price, set on each dish (Half $15, Whole $26). */
+  const [setsPrice, setSetsPrice] = useState(group?.setsPrice ?? false);
 
   const choices = parseChoices(choicesRaw);
   // Shown beside the closed section so charges already set aren't missed.
@@ -646,7 +658,7 @@ function OptionGroupEditor({
         if (!Number.isFinite(n) || n < 0) throw new Error(`The extra charge for ${c} must be an amount, like 4.00`);
         return Math.round(n * 100) / 100;
       });
-      const input = { name: name.trim(), options: choices, prices };
+      const input = { name: name.trim(), options: choices, prices, setsPrice };
       let id = group?.id;
       if (id) await updateOptionGroup(id, input);
       else id = (await addOptionGroup(input)).id;
@@ -712,7 +724,21 @@ function OptionGroupEditor({
             <p className="mt-1.5 text-xs text-ink-400">Put a comma between each choice.</p>
           </div>
 
-          {choices.length > 0 && (
+          <label className="flex cursor-pointer items-start gap-3 rounded-sm border border-cream-300 bg-white p-3.5">
+            <input
+              type="checkbox"
+              checked={setsPrice}
+              onChange={(e) => setSetsPrice(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[#6b2318]"
+            />
+            <span className="min-w-0">
+              <span className="block text-[0.9375rem]">Each choice has its own price</span>
+              <span className="block text-xs text-ink-500">Like Half $15 and Whole $26.</span>
+              <span className="block text-xs text-ink-500">You set the prices on each dish.</span>
+            </span>
+          </label>
+
+          {choices.length > 0 && !setsPrice && (
             <div>
               <button
                 type="button"
@@ -927,6 +953,19 @@ function ItemEditor({
   const [pickedGroupIds, setPickedGroupIds] = useState<string[] | null>(null);
   const groupIds = pickedGroupIds ?? savedGroupIds;
 
+  // A size option (Half / Whole) replaces the single price with one per choice.
+  const size = optionGroups.find((g) => g.setsPrice && groupIds.includes(g.id));
+  const savedChoicePrices = items.find((i) => i.id === item?.id)?.choicePrices ?? {};
+  /** Typed size prices: option id → choice → text. */
+  const [sizeDraft, setSizeDraft] = useState<Record<string, Record<string, string>>>({});
+  const [sizeError, setSizeError] = useState("");
+  const sizeValue = (g: OptionGroup, choice: string, i: number) => {
+    const typed = sizeDraft[g.id]?.[choice];
+    if (typed !== undefined) return typed;
+    const saved = savedChoicePrices[g.id]?.[i] ?? (form.price ? Number(form.price) : null);
+    return saved === null || !Number.isFinite(saved) ? "" : saved.toFixed(2);
+  };
+
   // Once the owner has ticked boxes here, keep those picks in step with what
   // the option editor just saved for this dish.
   const followGroup =
@@ -980,16 +1019,48 @@ function ItemEditor({
     }
   };
 
+  const categoryField = (
+    <div>
+      <label htmlFor="i-cat" className="field-label">
+        Category
+      </label>
+      <select
+        id="i-cat"
+        value={form.categoryId}
+        onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+        className="field-input"
+      >
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    let sizes: number[] | null = null;
+    if (size) {
+      sizes = size.options.map((o, i) => Number(sizeValue(size, o, i).replace(/[$\s]/g, "")));
+      const bad = size.options.find((o, i) => !sizeValue(size, o, i).trim() || !Number.isFinite(sizes![i]) || sizes![i] < 0);
+      if (bad) {
+        setSizeError(`Enter a price for ${bad}, like 15.00`);
+        return;
+      }
+      setSizeError("");
+    }
     setSaving(true);
     await onSave({
       name: form.name.trim(),
       description: form.description.trim(),
-      price: Number(form.price) || 0,
+      // With sizes, the dish is listed at its cheapest one.
+      price: sizes ? Math.min(...sizes) : Number(form.price) || 0,
       categoryId: form.categoryId,
       available: form.available,
       ...(pickedGroupIds && { optionGroupIds: pickedGroupIds }),
+      ...(size && sizes && { choicePrices: { [size.id]: sizes } }),
     }, photo ?? (removePhoto ? "remove" : null));
   };
 
@@ -1078,39 +1149,56 @@ function ItemEditor({
               className="field-input"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="i-price" className="field-label">
-                Price
-              </label>
-              <input
-                id="i-price"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
-                className="field-input"
-                inputMode="decimal"
-                placeholder="0.00"
-                required
-              />
+          {size ? (
+            <>
+              <fieldset>
+                <legend className="field-label">Price for each choice</legend>
+                <div className="divide-y divide-cream-200 rounded-sm border border-cream-300 bg-white">
+                  {size.options.map((o, i) => (
+                    <label key={o} className="flex items-center gap-3 px-3.5 py-2">
+                      <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{o}</span>
+                      <span className="text-[0.875rem] text-ink-400">$</span>
+                      <input
+                        value={sizeValue(size, o, i)}
+                        onChange={(e) =>
+                          setSizeDraft((d) => ({ ...d, [size.id]: { ...d[size.id], [o]: e.target.value } }))
+                        }
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        aria-label={`Price for ${o}`}
+                        className="field-input h-9 w-24 py-0 text-right tabular-nums"
+                      />
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-ink-400">Set by the {size.name} option below.</p>
+                {sizeError && (
+                  <p role="alert" className="mt-1.5 text-[0.8125rem] text-danger">
+                    {sizeError}
+                  </p>
+                )}
+              </fieldset>
+              {categoryField}
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="i-price" className="field-label">
+                  Price
+                </label>
+                <input
+                  id="i-price"
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  className="field-input"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+              {categoryField}
             </div>
-            <div>
-              <label htmlFor="i-cat" className="field-label">
-                Category
-              </label>
-              <select
-                id="i-cat"
-                value={form.categoryId}
-                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                className="field-input"
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          )}
 
           <label className="flex cursor-pointer items-center gap-3 rounded-sm border border-cream-300 bg-white p-3.5">
             <input
@@ -1137,7 +1225,13 @@ function ItemEditor({
                       onChange={(e) =>
                         setPickedGroupIds(
                           e.target.checked
-                            ? [...groupIds.filter((x) => x !== g.id), g.id]
+                            ? [
+                                // Only one option can set the price; ticking another swaps it.
+                                ...groupIds.filter(
+                                  (x) => x !== g.id && !(g.setsPrice && optionGroups.find((o) => o.id === x)?.setsPrice),
+                                ),
+                                g.id,
+                              ]
                             : groupIds.filter((x) => x !== g.id),
                         )
                       }

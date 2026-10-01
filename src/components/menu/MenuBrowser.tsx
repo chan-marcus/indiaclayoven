@@ -7,7 +7,7 @@ import type { MenuItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
 import { useRestaurantData } from "@/lib/restaurant-data";
 import { currency } from "@/lib/format";
-import { hasPricedChoices } from "@/lib/pricing";
+import { fromPrice, hasPricedChoices } from "@/lib/pricing";
 import { Badge, SoldOutTag } from "@/components/ui/Badge";
 import { ItemDetailModal } from "./ItemDetailModal";
 import { IconLeaf, IconPlus, IconSearch, IconClose, IconBag } from "@/components/ui/icons";
@@ -355,7 +355,7 @@ function ItemRow({
             }`}
           >
             {hasPricedChoices(item, optionGroups) && "From "}
-            {currency(item.price)}
+            {currency(fromPrice(item, optionGroups))}
           </span>
         </div>
       </div>

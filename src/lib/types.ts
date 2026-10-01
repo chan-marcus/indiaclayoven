@@ -71,6 +71,12 @@ export interface MenuItem {
   sort: number;
   /** Option groups the customer chooses from, in display order. */
   optionGroupIds: ID[];
+  /**
+   * This dish's price for each choice of a price-setting option, by option id,
+   * lined up with that option's choices (Half $15, Whole $26). A missing entry
+   * falls back to `price`, which is kept at the cheapest choice.
+   */
+  choicePrices: Record<ID, (number | null)[]>;
 }
 
 /**
@@ -82,8 +88,10 @@ export interface OptionGroup {
   restaurantId: ID;
   name: string;
   options: string[];
-  /** What each option adds to the dish price, lined up with `options`. */
+  /** What each option adds to the dish price, lined up with `options`. Unused when `setsPrice`. */
   prices: number[];
+  /** Each choice has its own price, set on each dish (sizes like Half / Whole). */
+  setsPrice: boolean;
   sort: number;
 }
 
@@ -93,7 +101,7 @@ export interface Choice {
   /** The group's name when it was picked, e.g. "Spice level". */
   group: string;
   choice: string;
-  /** What this choice added to the dish price when it was picked. */
+  /** What this choice added to (or, for a size, set as) the dish price when picked. */
   price?: number;
 }
 
