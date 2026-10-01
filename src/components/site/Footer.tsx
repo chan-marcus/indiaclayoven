@@ -3,7 +3,7 @@ import { Logo } from "./Logo";
 import { mapsUrl, telHref } from "@/lib/restaurant";
 import { getRestaurant, getSiteText } from "@/lib/db";
 import { fillText } from "@/lib/site-text";
-import { Lines } from "@/components/ui/Lines";
+import { Txt } from "@/components/ui/Txt";
 import { IconArrowRight } from "@/components/ui/icons";
 
 export async function Footer() {
@@ -15,10 +15,10 @@ export async function Footer() {
         <div>
           <Logo tone="light" />
           <p className="mt-5 max-w-xs font-display text-xl leading-snug text-cream/80 italic">
-            {t["footer.tagline"]}
+            <Txt k="footer.tagline" text={t["footer.tagline"]} />
           </p>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/55">
-            <Lines text={fillText(t["footer.blurb"], restaurant)} />
+            <Txt k="footer.blurb" text={fillText(t["footer.blurb"], restaurant)} />
           </p>
         </div>
 
@@ -104,7 +104,7 @@ export async function Footer() {
           className="group container-page flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between"
         >
           <span className="text-sm text-cream/70">
-            <Lines text={t["footer.directions"]} />
+            <Txt k="footer.directions" text={t["footer.directions"]} />
           </span>
           <span className="inline-flex items-center gap-2 text-[0.8125rem] font-medium whitespace-nowrap text-gold-bright">
             Open in Google Maps

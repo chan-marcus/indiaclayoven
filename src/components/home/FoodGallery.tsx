@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { galleryImages } from "@/lib/gallery";
 import { useRestaurantData } from "@/lib/restaurant-data";
 import { IconChevronLeft, IconChevronRight } from "@/components/ui/icons";
+import { Txt } from "@/components/ui/Txt";
 
 /**
  * Horizontal photography rail. Native scroll + snap does the work, so touch
@@ -46,9 +47,9 @@ export function FoodGallery() {
       <div className="container-page">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="eyebrow eyebrow-rule eyebrow-on-dark">{t["home.gallery.eyebrow"]}</p>
+            <p className="eyebrow eyebrow-rule eyebrow-on-dark"><Txt k="home.gallery.eyebrow" text={t["home.gallery.eyebrow"]} /></p>
             <h2 className="display-lg mt-5 max-w-lg text-balance text-cream">
-              {t["home.gallery.title"]}
+              <Txt k="home.gallery.title" text={t["home.gallery.title"]} />
             </h2>
           </div>
 

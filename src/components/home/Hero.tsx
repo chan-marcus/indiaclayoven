@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { IconArrowRight } from "@/components/ui/icons";
 import { getSiteText } from "@/lib/db";
-import { Lines } from "@/components/ui/Lines";
+import { Txt } from "@/components/ui/Txt";
 
 export async function Hero() {
   const t = await getSiteText();
@@ -29,16 +29,16 @@ export async function Hero() {
 
       <div className="container-page relative z-10 pt-28 pb-14 md:pb-20">
         <div className="max-w-2xl">
-          <p className="eyebrow eyebrow-rule eyebrow-on-dark">{t["home.hero.eyebrow"]}</p>
+          <p className="eyebrow eyebrow-rule eyebrow-on-dark"><Txt k="home.hero.eyebrow" text={t["home.hero.eyebrow"]} /></p>
 
           <h1 className="display-xl mt-6 text-cream">
-            {t["home.hero.title1"]}
+            <Txt k="home.hero.title1" text={t["home.hero.title1"]} />
             <br />
-            <span className="text-gold-bright italic">{t["home.hero.title2"]}</span>
+            <span className="text-gold-bright italic"><Txt k="home.hero.title2" text={t["home.hero.title2"]} /></span>
           </h1>
 
           <p className="mt-6 max-w-lg text-[1.0625rem] leading-relaxed text-pretty text-cream/80">
-            <Lines text={t["home.hero.intro"]} />
+            <Txt k="home.hero.intro" text={t["home.hero.intro"]} />
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">

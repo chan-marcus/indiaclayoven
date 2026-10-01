@@ -10,6 +10,7 @@ import { currency } from "@/lib/format";
 import { Badge, SoldOutTag } from "@/components/ui/Badge";
 import { ItemDetailModal } from "./ItemDetailModal";
 import { IconLeaf, IconPlus, IconSearch, IconClose, IconBag } from "@/components/ui/icons";
+import { Txt } from "@/components/ui/Txt";
 
 export function MenuBrowser() {
   const params = useSearchParams();
@@ -383,7 +384,7 @@ export function DietaryNote() {
       <div className="container-page flex items-start gap-3 py-3.5">
         <IconLeaf className="mt-0.5 h-[1.125rem] w-[1.125rem] shrink-0 text-gold" />
         <p className="text-[0.875rem] leading-relaxed text-ink-700">
-          <span className="font-medium">{t["menu.dietary.label"]}</span> {t["menu.dietary.body"]}
+          <span className="font-medium"><Txt k="menu.dietary.label" text={t["menu.dietary.label"]} /></span> <Txt k="menu.dietary.body" text={t["menu.dietary.body"]} />
         </p>
       </div>
     </div>

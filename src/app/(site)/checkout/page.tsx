@@ -13,6 +13,7 @@ export default async function CheckoutPage() {
   return (
     <>
       <PageHeader
+        k="checkout.header"
         eyebrow={t["checkout.header.eyebrow"]}
         title={t["checkout.header.title"]}
         intro={t["checkout.header.intro"]}

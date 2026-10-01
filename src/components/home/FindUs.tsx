@@ -3,7 +3,7 @@ import Link from "next/link";
 import { mapsUrl, mapsEmbedUrl, telHref } from "@/lib/restaurant";
 import { getRestaurant, getSiteText } from "@/lib/db";
 import { fillText } from "@/lib/site-text";
-import { Lines } from "@/components/ui/Lines";
+import { Txt } from "@/components/ui/Txt";
 import { IconArrowRight } from "@/components/ui/icons";
 
 export async function FindUs() {
@@ -22,12 +22,12 @@ export async function FindUs() {
         </div>
 
         <div>
-          <p className="eyebrow eyebrow-rule">{t["home.findus.eyebrow"]}</p>
+          <p className="eyebrow eyebrow-rule"><Txt k="home.findus.eyebrow" text={t["home.findus.eyebrow"]} /></p>
           <h2 className="display-md mt-5 max-w-md text-balance">
-            {t["home.findus.title"]}
+            <Txt k="home.findus.title" text={t["home.findus.title"]} />
           </h2>
           <p className="mt-5 max-w-md text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
-            <Lines text={t["home.findus.body"]} />
+            <Txt k="home.findus.body" text={t["home.findus.body"]} />
           </p>
 
           <dl className="mt-9 space-y-5 border-t border-cream-200 pt-8">
@@ -94,9 +94,9 @@ export async function ClosingCta() {
       <div className="absolute inset-0 bg-clay-dark/55" aria-hidden />
 
       <div className="container-page relative z-10 flex flex-col items-center py-20 text-center md:py-28">
-        <h2 className="display-lg max-w-2xl text-balance text-cream">{t["home.closing.title"]}</h2>
+        <h2 className="display-lg max-w-2xl text-balance text-cream"><Txt k="home.closing.title" text={t["home.closing.title"]} /></h2>
         <p className="mt-5 max-w-lg text-[1.0625rem] leading-relaxed text-pretty text-cream/75">
-          <Lines text={fillText(t["home.closing.body"], restaurant)} />
+          <Txt k="home.closing.body" text={fillText(t["home.closing.body"], restaurant)} />
         </p>
         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
           <Link href="/menu" className="btn btn-gold group">

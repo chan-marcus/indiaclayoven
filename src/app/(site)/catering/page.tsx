@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/site/PageHeader";
 import { CateringForm } from "@/components/forms/CateringForm";
 import { getSiteText } from "@/lib/db";
-import { Lines } from "@/components/ui/Lines";
+import { Txt } from "@/components/ui/Txt";
 
 export const metadata: Metadata = {
   title: "Catering & Parties",
@@ -17,6 +17,7 @@ export default async function CateringPage() {
   return (
     <>
       <PageHeader
+        k="catering.header"
         eyebrow={t["catering.header.eyebrow"]}
         title={t["catering.header.title"]}
         intro={t["catering.header.intro"]}
@@ -27,7 +28,7 @@ export default async function CateringPage() {
       <section className="section">
         <div className="container-page grid gap-12 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
           <div>
-            <h2 className="display-md text-balance">{t["catering.ways.title"]}</h2>
+            <h2 className="display-md text-balance"><Txt k="catering.ways.title" text={t["catering.ways.title"]} /></h2>
 
             <div className="mt-10 space-y-9">
               {HIGHLIGHTS.map((n, i) => (
@@ -37,9 +38,9 @@ export default async function CateringPage() {
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <div>
-                      <h3 className="font-display text-xl">{t[`catering.ways.${n}.title`]}</h3>
+                      <h3 className="font-display text-xl"><Txt k={`catering.ways.${n}.title`} text={t[`catering.ways.${n}.title`]} /></h3>
                       <p className="mt-2 text-[0.9375rem] leading-relaxed text-ink-500">
-                        <Lines text={t[`catering.ways.${n}.copy`]} />
+                        <Txt k={`catering.ways.${n}.copy`} text={t[`catering.ways.${n}.copy`]} />
                       </p>
                     </div>
                   </div>
@@ -49,9 +50,9 @@ export default async function CateringPage() {
           </div>
 
           <div>
-            <h2 className="display-md">{t["catering.form.title"]}</h2>
+            <h2 className="display-md"><Txt k="catering.form.title" text={t["catering.form.title"]} /></h2>
             <p className="mt-4 text-[0.9375rem] leading-relaxed text-ink-500">
-              <Lines text={t["catering.form.intro"]} />
+              <Txt k="catering.form.intro" text={t["catering.form.intro"]} />
             </p>
             <div className="mt-7">
               <CateringForm />

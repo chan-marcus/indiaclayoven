@@ -1,5 +1,7 @@
 import Image from "next/image";
 import { Lines } from "@/components/ui/Lines";
+import { Txt } from "@/components/ui/Txt";
+import type { TextKey } from "@/lib/site-text";
 
 /**
  * Shared page masthead. Two flavours: a compact clay band (default) and an
@@ -11,13 +13,18 @@ export function PageHeader({
   intro,
   image,
   alt = "",
+  k,
 }: {
   eyebrow: string;
   title: string;
   intro?: string;
   image?: string;
   alt?: string;
+  /** Website-text key prefix (e.g. "about.header"), for the Edit Website preview. */
+  k?: string;
 }) {
+  const tag = (part: string, text: string) =>
+    k ? <Txt k={`${k}.${part}` as TextKey} text={text} /> : <Lines text={text} />;
   if (image) {
     return (
       <section className="relative isolate flex min-h-[24rem] items-end overflow-hidden bg-clay-dark md:min-h-[32rem]">
@@ -27,11 +34,11 @@ export function PageHeader({
           aria-hidden
         />
         <div className="container-page relative z-10 pt-28 pb-14">
-          <p className="eyebrow eyebrow-rule eyebrow-on-dark">{eyebrow}</p>
-          <h1 className="display-lg mt-5 max-w-3xl text-balance text-cream">{title}</h1>
+          <p className="eyebrow eyebrow-rule eyebrow-on-dark">{tag("eyebrow", eyebrow)}</p>
+          <h1 className="display-lg mt-5 max-w-3xl text-balance text-cream">{tag("title", title)}</h1>
           {intro && (
             <p className="mt-5 max-w-xl text-[1.0625rem] leading-relaxed text-pretty text-cream/75">
-              <Lines text={intro} />
+              {tag("intro", intro)}
             </p>
           )}
         </div>
@@ -42,11 +49,11 @@ export function PageHeader({
   return (
     <section className="bg-clay-dark text-cream">
       <div className="container-page py-14 md:py-20">
-        <p className="eyebrow eyebrow-rule eyebrow-on-dark">{eyebrow}</p>
-        <h1 className="display-lg mt-5 max-w-3xl text-balance text-cream">{title}</h1>
+        <p className="eyebrow eyebrow-rule eyebrow-on-dark">{tag("eyebrow", eyebrow)}</p>
+        <h1 className="display-lg mt-5 max-w-3xl text-balance text-cream">{tag("title", title)}</h1>
         {intro && (
           <p className="mt-5 max-w-xl text-[1.0625rem] leading-relaxed text-pretty text-cream/75">
-            <Lines text={intro} />
+            {tag("intro", intro)}
           </p>
         )}
       </div>

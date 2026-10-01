@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/site/PageHeader";
 import { fullAddress, mapsUrl, telHref } from "@/lib/restaurant";
 import { getRestaurant, getSiteText } from "@/lib/db";
-import { Lines } from "@/components/ui/Lines";
+import { Txt } from "@/components/ui/Txt";
 import { IconArrowRight } from "@/components/ui/icons";
 
 export const metadata: Metadata = {
@@ -18,6 +18,7 @@ export default async function AboutPage() {
   return (
     <>
       <PageHeader
+        k="about.header"
         eyebrow={t["about.header.eyebrow"]}
         title={t["about.header.title"]}
         image="/images/restaurant-interior.jpg"
@@ -28,21 +29,21 @@ export default async function AboutPage() {
       <section className="section">
         <div className="container-page grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
           <div>
-            <p className="eyebrow eyebrow-rule">{t["about.story.eyebrow"]}</p>
+            <p className="eyebrow eyebrow-rule"><Txt k="about.story.eyebrow" text={t["about.story.eyebrow"]} /></p>
             <h2 className="display-md mt-5 text-balance">
-              {t["about.story.title"]}
+              <Txt k="about.story.title" text={t["about.story.title"]} />
             </h2>
           </div>
 
           <div className="space-y-6 text-[1.0625rem] leading-relaxed text-pretty text-ink-700">
             <p>
-              <Lines text={t["about.story.p1"]} />
+              <Txt k="about.story.p1" text={t["about.story.p1"]} />
             </p>
             <p>
-              <Lines text={t["about.story.p2"]} />
+              <Txt k="about.story.p2" text={t["about.story.p2"]} />
             </p>
             <p className="text-ink-500">
-              <Lines text={t["about.story.p3"]} />
+              <Txt k="about.story.p3" text={t["about.story.p3"]} />
             </p>
           </div>
         </div>
@@ -64,35 +65,35 @@ export default async function AboutPage() {
         <div className="container-page max-w-4xl">
           <div className="grid gap-14 md:gap-20">
             <article className="grid gap-6 md:grid-cols-[10rem_1fr] md:gap-12">
-              <p className="eyebrow pt-1.5">{t["about.oven.eyebrow"]}</p>
+              <p className="eyebrow pt-1.5"><Txt k="about.oven.eyebrow" text={t["about.oven.eyebrow"]} /></p>
               <div>
                 <h3 className="display-md text-balance">
-                  {t["about.oven.title"]}
+                  <Txt k="about.oven.title" text={t["about.oven.title"]} />
                 </h3>
                 <p className="mt-5 text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
-                  <Lines text={t["about.oven.body"]} />
+                  <Txt k="about.oven.body" text={t["about.oven.body"]} />
                 </p>
               </div>
             </article>
 
             <article className="grid gap-6 md:grid-cols-[10rem_1fr] md:gap-12">
-              <p className="eyebrow pt-1.5">{t["about.kitchen.eyebrow"]}</p>
+              <p className="eyebrow pt-1.5"><Txt k="about.kitchen.eyebrow" text={t["about.kitchen.eyebrow"]} /></p>
               <div>
-                <h3 className="display-md text-balance">{t["about.kitchen.title"]}</h3>
+                <h3 className="display-md text-balance"><Txt k="about.kitchen.title" text={t["about.kitchen.title"]} /></h3>
                 <p className="mt-5 text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
-                  <Lines text={t["about.kitchen.body"]} />
+                  <Txt k="about.kitchen.body" text={t["about.kitchen.body"]} />
                 </p>
               </div>
             </article>
 
             <article className="grid gap-6 md:grid-cols-[10rem_1fr] md:gap-12">
-              <p className="eyebrow pt-1.5">{t["about.room.eyebrow"]}</p>
+              <p className="eyebrow pt-1.5"><Txt k="about.room.eyebrow" text={t["about.room.eyebrow"]} /></p>
               <div>
                 <h3 className="display-md text-balance">
-                  {t["about.room.title"]}
+                  <Txt k="about.room.title" text={t["about.room.title"]} />
                 </h3>
                 <p className="mt-5 text-[1.0625rem] leading-relaxed text-pretty text-ink-500">
-                  <Lines text={t["about.room.body"]} />
+                  <Txt k="about.room.body" text={t["about.room.body"]} />
                 </p>
               </div>
             </article>
@@ -114,8 +115,8 @@ export default async function AboutPage() {
           </div>
 
           <div>
-            <p className="eyebrow eyebrow-rule">{t["about.visit.eyebrow"]}</p>
-            <h2 className="display-md mt-5">{t["about.visit.title"]}</h2>
+            <p className="eyebrow eyebrow-rule"><Txt k="about.visit.eyebrow" text={t["about.visit.eyebrow"]} /></p>
+            <h2 className="display-md mt-5"><Txt k="about.visit.title" text={t["about.visit.title"]} /></h2>
 
             <dl className="mt-9 space-y-6 border-t border-cream-300 pt-8">
               <div>
@@ -137,7 +138,7 @@ export default async function AboutPage() {
                   <br />
                   {restaurant.hours.buffet}
                   <br />
-                  {t["about.visit.hours_note"]}
+                  <Txt k="about.visit.hours_note" text={t["about.visit.hours_note"]} />
                 </dd>
               </div>
               <div>

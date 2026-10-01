@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { mapsUrl, telHref } from "@/lib/restaurant";
 import { getRestaurant, getSiteText } from "@/lib/db";
-import { Lines } from "@/components/ui/Lines";
+import { Txt } from "@/components/ui/Txt";
 import { IconClock, IconLeaf, IconPhone, IconPin } from "@/components/ui/icons";
 
 /**
@@ -27,12 +27,14 @@ export async function InfoBar() {
       icon: IconPhone,
       label: "Call us",
       lines: [restaurant.phone, t["home.info.call_note"]],
+      noteKey: "home.info.call_note" as const,
       href: telHref(restaurant),
     },
     {
       icon: IconLeaf,
       label: "Kitchen",
       lines: [restaurant.cuisine, t["home.info.kitchen_note"]],
+      noteKey: "home.info.kitchen_note" as const,
     },
   ];
 
@@ -52,7 +54,7 @@ export async function InfoBar() {
                   {c.lines[0]}
                 </p>
                 <p className="mt-0.5 text-[0.8125rem] leading-snug text-pretty text-ink-500">
-                  {c.lines[1]}
+                  {c.noteKey ? <Txt k={c.noteKey} text={c.lines[1]} /> : c.lines[1]}
                 </p>
               </div>
             </div>
@@ -92,18 +94,21 @@ export async function WaysToOrder() {
   const t = await getSiteText();
   const ways = [
     {
+      k: "home.ways.order" as const,
       title: t["home.ways.order.title"],
       copy: t["home.ways.order.copy"],
       href: "/menu",
       cta: "Start an order",
     },
     {
+      k: "home.ways.reserve" as const,
       title: t["home.ways.reserve.title"],
       copy: t["home.ways.reserve.copy"],
       href: "/reservations",
       cta: "Reserve a table",
     },
     {
+      k: "home.ways.catering" as const,
       title: t["home.ways.catering.title"],
       copy: t["home.ways.catering.copy"],
       href: "/catering",
@@ -120,9 +125,11 @@ export async function WaysToOrder() {
             href={w.href}
             className="group flex flex-col bg-cream p-7 transition-colors duration-300 hover:bg-cream-100 lg:p-9"
           >
-            <h3 className="font-display text-2xl">{w.title}</h3>
+            <h3 className="font-display text-2xl">
+              <Txt k={`${w.k}.title`} text={w.title} />
+            </h3>
             <p className="mt-3 flex-1 text-[0.9375rem] leading-relaxed text-ink-500">
-              <Lines text={w.copy} />
+              <Txt k={`${w.k}.copy`} text={w.copy} />
             </p>
             <span className="mt-6 inline-flex items-center gap-2 text-[0.8125rem] font-medium text-gold">
               {w.cta}

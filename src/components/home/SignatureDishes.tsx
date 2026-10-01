@@ -4,6 +4,7 @@ import { getCategories, getMenuItems, getSiteText } from "@/lib/db";
 import { currency } from "@/lib/format";
 import { BadgeOnDark } from "@/components/ui/Badge";
 import { IconArrowRight } from "@/components/ui/icons";
+import { Txt } from "@/components/ui/Txt";
 
 /**
  * Each card is a single link into the menu with ?item=<id>, which opens that
@@ -19,9 +20,9 @@ export async function SignatureDishes() {
       <div className="container-page">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="eyebrow eyebrow-rule">{t["home.signature.eyebrow"]}</p>
+            <p className="eyebrow eyebrow-rule"><Txt k="home.signature.eyebrow" text={t["home.signature.eyebrow"]} /></p>
             <h2 className="display-lg mt-5 max-w-xl text-balance">
-              {t["home.signature.title"]}
+              <Txt k="home.signature.title" text={t["home.signature.title"]} />
             </h2>
           </div>
           <Link href="/menu" className="btn btn-secondary group">

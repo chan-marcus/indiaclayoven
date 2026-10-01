@@ -15,6 +15,7 @@ export default async function MenuPage() {
   return (
     <>
       <PageHeader
+        k="menu.header"
         eyebrow={t["menu.header.eyebrow"]}
         title={t["menu.header.title"]}
         intro={t["menu.header.intro"]}
