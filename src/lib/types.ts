@@ -62,7 +62,8 @@ export interface MenuItem {
   name: string;
   description?: string;
   price: number;
-  image: string;
+  /** Absent when the dish has no photo. */
+  image?: string;
   available: boolean;
   badges: BadgeKind[];
   /** Surfaced in the Signature Dishes section on the homepage. */
@@ -102,7 +103,7 @@ export interface CartLine {
   itemId: ID;
   name: string;
   price: number;
-  image: string;
+  image?: string;
   quantity: number;
   choices?: Choice[];
   notes?: string;

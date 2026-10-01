@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { DishImage } from "@/components/ui/DishImage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -393,7 +393,7 @@ export function CheckoutForm() {
               {lines.map((l) => (
                 <li key={l.lineId} className="flex gap-3 py-3.5">
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-sm bg-cream-100">
-                    <Image src={l.image} alt="" fill sizes="48px" className="object-cover" />
+                    <DishImage src={l.image} alt="" sizes="48px" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm leading-snug font-medium">

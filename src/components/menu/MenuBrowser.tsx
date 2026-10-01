@@ -308,19 +308,22 @@ function ItemRow({
         aria-label={`View ${item.name}`}
       />
 
-      <div
-        className={`relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-sm bg-cream-200 sm:h-24 sm:w-24 ${
-          sold ? "opacity-45 grayscale" : ""
-        }`}
-      >
-        <Image
-          src={item.image}
-          alt={item.name}
-          fill
-          sizes="96px"
-          className={sold ? "object-cover" : "img-zoom object-cover"}
-        />
-      </div>
+      {/* Dishes without a photo show as text only */}
+      {item.image && (
+        <div
+          className={`relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-sm bg-cream-200 sm:h-24 sm:w-24 ${
+            sold ? "opacity-45 grayscale" : ""
+          }`}
+        >
+          <Image
+            src={item.image}
+            alt={item.name}
+            fill
+            sizes="96px"
+            className={sold ? "object-cover" : "img-zoom object-cover"}
+          />
+        </div>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">

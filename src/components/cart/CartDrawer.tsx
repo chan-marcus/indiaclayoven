@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { DishImage } from "@/components/ui/DishImage";
 import Link from "next/link";
 import { useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
@@ -75,13 +75,7 @@ export function CartDrawer() {
               {lines.map((line) => (
                 <li key={line.lineId} className="flex gap-3.5 py-4">
                   <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-sm bg-cream-100">
-                    <Image
-                      src={line.image}
-                      alt=""
-                      fill
-                      sizes="64px"
-                      className="object-cover"
-                    />
+                    <DishImage src={line.image} alt="" sizes="64px" />
                   </div>
 
                   <div className="min-w-0 flex-1">

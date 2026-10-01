@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { DishImage } from "@/components/ui/DishImage";
 import Link from "next/link";
 import { getCategories, getMenuItems, getSiteText } from "@/lib/db";
 import { currency } from "@/lib/format";
@@ -39,12 +39,12 @@ export async function SignatureDishes() {
               className="group flex flex-col focus-visible:outline-none"
             >
               <div className="relative aspect-[4/5] overflow-hidden rounded-sm bg-cream-200">
-                <Image
+                <DishImage
                   src={dish.image}
                   alt={dish.name}
-                  fill
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                   className="img-zoom object-cover"
+                  markClassName="h-1/3 w-1/3 -translate-y-6"
                 />
                 {/* Subtle overlay deepens on hover so the type stays readable */}
                 <div

@@ -71,7 +71,11 @@ export function ItemDetailModal({
         className="absolute inset-0 animate-fade-in bg-ink/50"
       />
 
-      <div className="relative flex max-h-[92vh] w-full animate-slide-up flex-col overflow-hidden rounded-t-md bg-cream sm:max-w-4xl sm:animate-rise sm:flex-row sm:rounded-sm">
+      <div
+        className={`relative flex max-h-[92vh] w-full animate-slide-up flex-col overflow-hidden rounded-t-md bg-cream sm:animate-rise sm:flex-row sm:rounded-sm ${
+          item.image ? "sm:max-w-4xl" : "sm:max-w-xl"
+        }`}
+      >
         <button
           type="button"
           onClick={onClose}
@@ -81,20 +85,22 @@ export function ItemDetailModal({
           <IconClose className="h-5 w-5" />
         </button>
 
-        {/* Photograph */}
-        <div className="relative h-52 w-full shrink-0 bg-cream-200 sm:h-auto sm:w-[45%]">
-          <Image
-            src={item.image}
-            alt={item.name}
-            fill
-            sizes="(max-width: 640px) 100vw, 45vw"
-            className="object-cover"
-          />
-        </div>
+        {/* Photograph, when the dish has one */}
+        {item.image && (
+          <div className="relative h-52 w-full shrink-0 bg-cream-200 sm:h-auto sm:w-[45%]">
+            <Image
+              src={item.image}
+              alt={item.name}
+              fill
+              sizes="(max-width: 640px) 100vw, 45vw"
+              className="object-cover"
+            />
+          </div>
+        )}
 
         {/* Detail */}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 sm:p-8">
-          <p className="text-[0.6875rem] tracking-[0.16em] text-gold uppercase">
+          <p className="pr-10 text-[0.6875rem] tracking-[0.16em] text-gold uppercase">
             {categories.find((c) => c.id === item.categoryId)?.name}
           </p>
 

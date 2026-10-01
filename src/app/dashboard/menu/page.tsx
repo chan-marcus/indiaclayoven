@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { DishImage } from "@/components/ui/DishImage";
 import { useEffect, useMemo, useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
 import { reportFailure } from "@/lib/restaurant-data";
@@ -22,6 +23,7 @@ export default function MenuManagerPage() {
     deleteOptionGroup,
     setOptionGroupOnItems,
     uploadItemImage,
+    removeItemImage,
   } = useDashboard();
 
   const [query, setQuery] = useState("");
@@ -235,7 +237,7 @@ export default function MenuManagerPage() {
                     title="Change photo"
                     className="relative h-11 w-11 shrink-0 overflow-hidden rounded-sm bg-cream-100 transition-opacity hover:opacity-80"
                   >
-                    <Image src={item.image} alt="" fill sizes="44px" className="object-cover" />
+                    <DishImage src={item.image} alt="" sizes="44px" />
                   </button>
 
                   <div className="min-w-0 flex-1">
@@ -342,7 +344,8 @@ export default function MenuManagerPage() {
           onSave={async (patch, photo) => {
             if (editing) {
               await updateItem(editing.id, patch);
-              if (photo) await uploadItemImage(editing.id, photo);
+              if (photo === "remove") await removeItemImage(editing.id);
+              else if (photo) await uploadItemImage(editing.id, photo);
             } else {
               const created = await addItem({
                 name: patch.name ?? "New dish",
@@ -352,7 +355,7 @@ export default function MenuManagerPage() {
                 available: patch.available ?? true,
                 optionGroupIds: patch.optionGroupIds ?? [],
               });
-              if (created && photo) await uploadItemImage(created.id, photo);
+              if (created && photo instanceof Blob) await uploadItemImage(created.id, photo);
             }
             setEditing(null);
             setCreating(false);
@@ -741,8 +744,8 @@ function ItemEditor({
   categories: { id: string; name: string }[];
   optionGroups: OptionGroup[];
   onClose: () => void;
-  /** `photo` is a new, already-resized picture, if one was chosen. */
-  onSave: (patch: Partial<MenuItem>, photo: Blob | null) => Promise<void>;
+  /** `photo` is a new, already-resized picture, "remove" to take it off, or null to leave it. */
+  onSave: (patch: Partial<MenuItem>, photo: Blob | "remove" | null) => Promise<void>;
 }) {
   const [form, setForm] = useState({
     name: item?.name ?? "",
@@ -754,6 +757,16 @@ function ItemEditor({
   });
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  /** The owner pressed Remove on the dish's saved photo. */
+  const [removePhoto, setRemovePhoto] = useState(false);
+  const hasPhoto = Boolean(photoUrl || (item?.image && !removePhoto));
+
+  const dropPhoto = () => {
+    setPhoto(null);
+    setPhotoUrl(null);
+    setPhotoError("");
+    if (item?.image) setRemovePhoto(true);
+  };
   const [photoError, setPhotoError] = useState("");
   const [preparing, setPreparing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -772,6 +785,7 @@ function ItemEditor({
       if (small.size > 4 * 1024 * 1024) throw new Error("That photo is too large. Use one under 4 MB.");
       setPhoto(small);
       setPhotoUrl(URL.createObjectURL(small));
+      setRemovePhoto(false);
     } catch (err) {
       setPhotoError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -789,7 +803,7 @@ function ItemEditor({
       categoryId: form.categoryId,
       available: form.available,
       optionGroupIds: form.optionGroupIds,
-    }, photo);
+    }, photo ?? (removePhoto ? "remove" : null));
   };
 
   return (
@@ -816,22 +830,34 @@ function ItemEditor({
             <span className="field-label">Photo</span>
             <div className="flex items-center gap-4">
               <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-sm bg-cream-200">
-                <Image
-                  src={photoUrl ?? item?.image ?? "/images/curry-spread.jpg"}
-                  alt=""
-                  fill
-                  sizes="96px"
-                  unoptimized={Boolean(photoUrl)}
-                  className="object-cover"
-                />
+                {photoUrl ? (
+                  <Image src={photoUrl} alt="" fill sizes="96px" unoptimized className="object-cover" />
+                ) : (
+                  <DishImage src={removePhoto ? undefined : item?.image} alt="" sizes="96px" />
+                )}
               </div>
               <div className="min-w-0">
-                <label className="btn btn-secondary btn-sm cursor-pointer has-focus-visible:ring-2 has-focus-visible:ring-gold">
-                  <input type="file" accept="image/*" onChange={pickPhoto} className="sr-only" />
-                  {preparing ? "Preparing…" : item || photoUrl ? "Change photo" : "Upload photo"}
-                </label>
+                <div className="flex items-center gap-3">
+                  <label className="btn btn-secondary btn-sm cursor-pointer has-focus-visible:ring-2 has-focus-visible:ring-gold">
+                    <input type="file" accept="image/*" onChange={pickPhoto} className="sr-only" />
+                    {preparing ? "Preparing…" : hasPhoto ? "Change photo" : "Upload photo"}
+                  </label>
+                  {hasPhoto && (
+                    <button
+                      type="button"
+                      onClick={dropPhoto}
+                      className="text-[0.8125rem] text-ink-500 underline-offset-4 hover:text-danger hover:underline"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
                 <p className="mt-1.5 text-xs text-ink-400">
-                  {photoUrl ? "Save to use this photo." : "JPG or PNG, any size."}
+                  {photoUrl
+                    ? "Save to use this photo."
+                    : removePhoto
+                      ? "Removed when you save."
+                      : "JPG or PNG, any size."}
                 </p>
               </div>
             </div>

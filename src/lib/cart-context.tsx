@@ -170,11 +170,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const { settings, items } = useRestaurantData();
 
-  // Price every line from the live menu, so a price change made in the
-  // dashboard reaches carts already saved in the browser.
+  // Price (and picture) every line from the live menu, so changes made in the
+  // dashboard reach carts already saved in the browser.
   const lines = useMemo(() => {
-    const priceOf = new Map(items.map((i) => [i.id, i.price]));
-    return state.lines.map((l) => ({ ...l, price: priceOf.get(l.itemId) ?? l.price }));
+    const byId = new Map(items.map((i) => [i.id, i]));
+    return state.lines.map((l) => {
+      const live = byId.get(l.itemId);
+      return live ? { ...l, price: live.price, image: live.image } : l;
+    });
   }, [state.lines, items]);
 
   const subtotal = useMemo(() => lines.reduce((sum, l) => sum + l.price * l.quantity, 0), [lines]);

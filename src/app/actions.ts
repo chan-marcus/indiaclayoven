@@ -221,7 +221,7 @@ export async function createMenuItem(
           name: text(input.name, "Name", 120),
           description: optionalText(input.description, "Description"),
           price: money(input.price, "Price"),
-          image: input.image?.startsWith("/images/") ? input.image : "/images/curry-spread.jpg",
+          image: input.image?.startsWith("/images/") ? input.image : null,
           available: input.available ?? true,
           badges: [],
           signature: false,
@@ -250,7 +250,8 @@ function imageType(bytes: Uint8Array): { mime: string; ext: string } | null {
 }
 
 /** The path inside the bucket, if this URL is a photo uploaded here. */
-function uploadedPath(url: string): string | null {
+function uploadedPath(url: string | null): string | null {
+  if (!url) return null;
   const marker = `/storage/v1/object/public/${IMAGE_BUCKET}/`;
   const i = url.indexOf(marker);
   return i === -1 ? null : decodeURIComponent(url.slice(i + marker.length));
@@ -267,7 +268,7 @@ export async function uploadMenuItemImage(id: string, form: FormData): Promise<A
     const type = imageType(bytes);
     if (!type) throw new InputError("Use a JPG, PNG or WebP photo");
 
-    const current = check<{ image: string }>(
+    const current = check<{ image: string | null }>(
       await supabase.from("menu_items").select("image").eq("id", itemId).eq("restaurant_id", RESTAURANT_ID).single(),
       "find the dish",
     );
@@ -293,9 +294,28 @@ export async function uploadMenuItemImage(id: string, form: FormData): Promise<A
   });
 }
 
+/** Takes the photo off a dish, which then shows without one. */
+export async function removeMenuItemImage(id: string): Promise<ActionResult<MenuItem>> {
+  return run(async () => {
+    const itemId = text(id, "Item", 100);
+    const current = check<{ image: string | null }>(
+      await supabase.from("menu_items").select("image").eq("id", itemId).eq("restaurant_id", RESTAURANT_ID).single(),
+      "find the dish",
+    );
+    check(
+      await supabase.from("menu_items").update({ image: null }).eq("id", itemId).eq("restaurant_id", RESTAURANT_ID),
+      "remove the photo",
+    );
+    const old = uploadedPath(current.image);
+    if (old) await supabase.storage.from(IMAGE_BUCKET).remove([old]);
+    refreshSite();
+    return loadItem(itemId);
+  });
+}
+
 export async function deleteMenuItem(id: string): Promise<ActionResult<void>> {
   return run(async () => {
-    const removed = check<{ image: string }[]>(
+    const removed = check<{ image: string | null }[]>(
       await supabase
         .from("menu_items")
         .delete()

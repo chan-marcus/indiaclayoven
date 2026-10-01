@@ -15,6 +15,7 @@ import {
   updateMenuItem,
   updateRestaurant,
   updateSiteText,
+  removeMenuItemImage,
   uploadMenuItemImage,
 } from "@/app/actions";
 import { unwrap } from "@/lib/action-result";
@@ -55,6 +56,8 @@ interface DataValue extends PublicData {
   addItem: (item: ItemInput & { image?: string }) => Promise<MenuItem | undefined>;
   /** Uploads a new photo for the dish. */
   uploadItemImage: (id: string, photo: Blob) => Promise<void>;
+  /** Leaves the dish without a photo. */
+  removeItemImage: (id: string) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
   addCategory: (name: string) => Promise<void>;
   /** The option-group writes reject with the reason so the form can show it. */
@@ -147,6 +150,14 @@ export function RestaurantDataProvider({
         replaceItem(unwrap(await uploadMenuItemImage(id, form)));
       } catch (err) {
         reportFailure("upload that photo", err);
+      }
+    },
+
+    removeItemImage: async (id) => {
+      try {
+        replaceItem(unwrap(await removeMenuItemImage(id)));
+      } catch (err) {
+        reportFailure("remove that photo", err);
       }
     },
 
