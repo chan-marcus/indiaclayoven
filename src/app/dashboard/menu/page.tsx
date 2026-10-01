@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { DishImage } from "@/components/ui/DishImage";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
 import { reportFailure } from "@/lib/restaurant-data";
 import { shrinkImage } from "@/lib/shrink-image";
@@ -50,7 +50,18 @@ export default function MenuManagerPage() {
     );
   }, [items, query, categoryFilter]);
 
-  const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? "—";
+  // The table is grouped under a header per category, in menu order.
+  const sections = useMemo(() => {
+    const known = new Set(categories.map((c) => c.id));
+    const out = categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      dishes: rows.filter((r) => r.categoryId === c.id),
+    }));
+    const other = rows.filter((r) => !known.has(r.categoryId));
+    if (other.length) out.push({ id: "other", name: "Other", dishes: other });
+    return out.filter((s) => s.dishes.length > 0);
+  }, [rows, categories]);
   const groupsOf = (item: MenuItem) => optionGroups.filter((g) => item.optionGroupIds.includes(g.id));
   const usedBy = (groupId: string) => items.filter((i) => i.optionGroupIds.includes(groupId));
 
@@ -63,6 +74,15 @@ export default function MenuManagerPage() {
       const next = new Set(s);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  const toggleSection = (ids: string[], on: boolean) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
       return next;
     });
   const toggleAllVisible = () =>
@@ -187,7 +207,7 @@ export default function MenuManagerPage() {
 
       {/* The table, deliberately spreadsheet-plain */}
       <div className="mt-5 overflow-hidden rounded-sm border border-cream-300 bg-white">
-        <div className="hidden grid-cols-[1.25rem_3.5rem_1fr_9rem_6rem_7rem_5rem] items-center gap-4 border-b border-cream-200 bg-cream-100/60 px-4 py-2.5 text-[0.6875rem] font-medium tracking-[0.12em] text-ink-400 uppercase lg:grid">
+        <div className="hidden grid-cols-[1.25rem_3.5rem_1fr_6rem_7rem_5rem] items-center gap-4 border-b border-cream-200 bg-cream-100/60 px-4 py-2.5 text-[0.6875rem] font-medium tracking-[0.12em] text-ink-400 uppercase lg:grid">
           <input
             type="checkbox"
             checked={allVisibleSelected}
@@ -197,7 +217,6 @@ export default function MenuManagerPage() {
           />
           <span />
           <span>Item</span>
-          <span>Category</span>
           <span>Price</span>
           <span>Available</span>
           <span className="text-right">Edit</span>
@@ -217,96 +236,112 @@ export default function MenuManagerPage() {
         )}
 
         <div className="divide-y divide-cream-200">
-          {rows.map((item) => {
-            const groups = groupsOf(item);
+          {sections.map((section) => {
+            const ids = section.dishes.map((d) => d.id);
+            const n = ids.filter((id) => selected.has(id)).length;
             return (
-              <div
-                key={item.id}
-                className={`px-4 py-3 lg:grid lg:grid-cols-[1.25rem_3.5rem_1fr_9rem_6rem_7rem_5rem] lg:items-center lg:gap-4 ${
-                  selected.has(item.id) ? "bg-gold-soft/35" : ""
-                }`}
-              >
-                {/* lg:contents dissolves this wrapper into the grid on desktop */}
-                <div className="flex gap-3 lg:contents">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(item.id)}
-                    onChange={() => toggleRow(item.id)}
-                    aria-label={`Select ${item.name}`}
-                    className="mt-3.5 h-4 w-4 shrink-0 accent-[#6b2318] lg:mt-0"
+              <Fragment key={section.id}>
+                <div className="flex items-center gap-3 bg-cream-200/50 px-4 py-2.5 lg:gap-4">
+                  <TriCheckbox
+                    checked={n === ids.length}
+                    indeterminate={n > 0 && n < ids.length}
+                    onChange={(on) => toggleSection(ids, on)}
+                    label={`Select all ${section.name}`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setEditing(item)}
-                    aria-label={`Change the photo for ${item.name}`}
-                    title="Change photo"
-                    className="relative h-11 w-11 shrink-0 overflow-hidden rounded-sm bg-cream-100 transition-opacity hover:opacity-80"
-                  >
-                    <DishImage src={item.image} alt="" sizes="44px" />
-                  </button>
+                  <h2 className="font-display text-[1.0625rem] leading-snug">{section.name}</h2>
+                  <span className="ml-auto text-xs whitespace-nowrap text-ink-400">
+                    {ids.length} {ids.length === 1 ? "dish" : "dishes"}
+                  </span>
+                </div>
+                {section.dishes.map((item) => {
+                  const groups = groupsOf(item);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`px-4 py-3 lg:grid lg:grid-cols-[1.25rem_3.5rem_1fr_6rem_7rem_5rem] lg:items-center lg:gap-4 ${
+                        selected.has(item.id) ? "bg-gold-soft/35" : ""
+                      }`}
+                    >
+                      {/* lg:contents dissolves this wrapper into the grid on desktop */}
+                      <div className="flex gap-3 lg:contents">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(item.id)}
+                          onChange={() => toggleRow(item.id)}
+                          aria-label={`Select ${item.name}`}
+                          className="mt-3.5 h-4 w-4 shrink-0 accent-[#6b2318] lg:mt-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditing(item)}
+                          aria-label={`Change the photo for ${item.name}`}
+                          title="Change photo"
+                          className="relative h-11 w-11 shrink-0 overflow-hidden rounded-sm bg-cream-100 transition-opacity hover:opacity-80"
+                        >
+                          <DishImage src={item.image} alt="" sizes="44px" />
+                        </button>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[0.9375rem] leading-snug font-medium lg:truncate">
-                      {item.name}
-                    </p>
-                    <p className="line-clamp-1 text-[0.8125rem] text-ink-500 lg:truncate">
-                      {item.description ?? <span className="italic">No description</span>}
-                    </p>
-                    {groups.length > 0 && (
-                      <p className="mt-0.5 truncate text-xs text-gold">
-                        Options: {groups.map((g) => g.name).join(", ")}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[0.9375rem] leading-snug font-medium lg:truncate">
+                            {item.name}
+                          </p>
+                          <p className="line-clamp-1 text-[0.8125rem] text-ink-500 lg:truncate">
+                            {item.description ?? <span className="italic">No description</span>}
+                          </p>
+                          {groups.length > 0 && (
+                            <p className="mt-0.5 truncate text-xs text-gold">
+                              Options: {groups.map((g) => g.name).join(", ")}
+                            </p>
+                          )}
+                          {/* Price inline on small screens */}
+                          <p className="mt-1 text-[0.8125rem] text-ink-400 lg:hidden">
+                            {currency(item.price)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="hidden text-[0.9375rem] tabular-nums lg:block">
+                        {currency(item.price)}
                       </p>
-                    )}
-                    {/* Category + price inline on small screens */}
-                    <p className="mt-1 text-[0.8125rem] text-ink-400 lg:hidden">
-                      {catName(item.categoryId)} · {currency(item.price)}
-                    </p>
-                  </div>
-                </div>
 
-                <p className="hidden text-[0.875rem] text-ink-500 lg:block">
-                  {catName(item.categoryId)}
-                </p>
+                      {/* Availability toggle */}
+                      <div className="hidden lg:block">
+                        <AvailabilityToggle
+                          on={item.available}
+                          onChange={() => toggleAvailability(item.id)}
+                          label={item.name}
+                        />
+                      </div>
 
-                <p className="hidden text-[0.9375rem] tabular-nums lg:block">
-                  {currency(item.price)}
-                </p>
-
-                {/* Availability toggle */}
-                <div className="hidden lg:block">
-                  <AvailabilityToggle
-                    on={item.available}
-                    onChange={() => toggleAvailability(item.id)}
-                    label={item.name}
-                  />
-                </div>
-
-                <div className="mt-3 flex items-center justify-end gap-2 border-t border-cream-200 pt-3 lg:mt-0 lg:gap-1 lg:border-0 lg:pt-0">
-                  <div className="mr-auto lg:hidden">
-                    <AvailabilityToggle
-                      on={item.available}
-                      onChange={() => toggleAvailability(item.id)}
-                      label={item.name}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(item)}
-                    aria-label={`Edit ${item.name}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-xs text-ink-500 transition-colors hover:bg-cream-100 hover:text-ink"
-                  >
-                    <IconEdit className="h-[1.125rem] w-[1.125rem]" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(item)}
-                    aria-label={`Delete ${item.name}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-xs text-ink-400 transition-colors hover:bg-danger/8 hover:text-danger"
-                  >
-                    <IconTrash className="h-[1.125rem] w-[1.125rem]" />
-                  </button>
-                </div>
-              </div>
+                      <div className="mt-3 flex items-center justify-end gap-2 border-t border-cream-200 pt-3 lg:mt-0 lg:gap-1 lg:border-0 lg:pt-0">
+                        <div className="mr-auto lg:hidden">
+                          <AvailabilityToggle
+                            on={item.available}
+                            onChange={() => toggleAvailability(item.id)}
+                            label={item.name}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditing(item)}
+                          aria-label={`Edit ${item.name}`}
+                          className="flex h-9 w-9 items-center justify-center rounded-xs text-ink-500 transition-colors hover:bg-cream-100 hover:text-ink"
+                        >
+                          <IconEdit className="h-[1.125rem] w-[1.125rem]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDelete(item)}
+                          aria-label={`Delete ${item.name}`}
+                          className="flex h-9 w-9 items-center justify-center rounded-xs text-ink-400 transition-colors hover:bg-danger/8 hover:text-danger"
+                        >
+                          <IconTrash className="h-[1.125rem] w-[1.125rem]" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </Fragment>
             );
           })}
 
@@ -685,10 +720,12 @@ function TriCheckbox({
   checked,
   indeterminate,
   onChange,
+  label,
 }: {
   checked: boolean;
   indeterminate: boolean;
   onChange: (on: boolean) => void;
+  label?: string;
 }) {
   return (
     <input
@@ -698,6 +735,7 @@ function TriCheckbox({
       }}
       checked={checked}
       onChange={(e) => onChange(e.target.checked)}
+      aria-label={label}
       className="h-4 w-4 shrink-0 accent-[#6b2318]"
     />
   );
