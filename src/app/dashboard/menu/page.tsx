@@ -6,11 +6,11 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
 import { reportFailure } from "@/lib/restaurant-data";
 import { shrinkImage } from "@/lib/shrink-image";
-import { choicesSummary } from "@/lib/pricing";
+import { addOnLabel, choicesSummary } from "@/lib/pricing";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { currency } from "@/lib/format";
 import type { MenuItem, OptionGroup } from "@/lib/types";
-import { IconClose, IconEdit, IconPlus, IconSearch, IconTrash } from "@/components/ui/icons";
+import { IconChevronRight, IconClose, IconEdit, IconPlus, IconSearch, IconTrash } from "@/components/ui/icons";
 
 export default function MenuManagerPage() {
   const {
@@ -614,8 +614,16 @@ function OptionGroupEditor({
   const [picked, setPicked] = useState<Set<string>>(new Set(initialItemIds));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  /** Extra charges are tucked away until the owner opens them. */
+  const [showExtras, setShowExtras] = useState(false);
 
   const choices = parseChoices(choicesRaw);
+  // Shown beside the closed section so charges already set aren't missed.
+  const extrasSummary = choices
+    .map((c) => [c, Number((extras[c.toLowerCase()] ?? "").replace(/[$\s]/g, ""))] as const)
+    .filter(([, n]) => n > 0)
+    .map(([c, n]) => `${c} ${addOnLabel(n)}`)
+    .join(" · ");
 
   const toggle = (ids: string[], on: boolean) =>
     setPicked((s) => {
@@ -705,31 +713,54 @@ function OptionGroupEditor({
           </div>
 
           {choices.length > 0 && (
-            <fieldset>
-              <legend className="field-label">
-                Extra charge <span className="normal-case">(optional)</span>
-              </legend>
-              <div className="divide-y divide-cream-200 rounded-sm border border-cream-300 bg-white">
-                {choices.map((c) => {
-                  const key = c.toLowerCase();
-                  return (
-                    <label key={key} className="flex items-center gap-3 px-3.5 py-2">
-                      <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{c}</span>
-                      <span className="text-[0.875rem] text-ink-400">+$</span>
-                      <input
-                        value={extras[key] ?? ""}
-                        onChange={(e) => setExtras((x) => ({ ...x, [key]: e.target.value }))}
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        aria-label={`Extra charge for ${c}`}
-                        className="field-input h-9 w-24 py-0 text-right tabular-nums"
-                      />
-                    </label>
-                  );
-                })}
-              </div>
-              <p className="mt-1.5 text-xs text-ink-400">Leave blank if it costs nothing extra.</p>
-            </fieldset>
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowExtras((v) => !v)}
+                aria-expanded={showExtras}
+                aria-controls="g-extras"
+                className={`field-label flex w-full items-center gap-1.5 text-left transition-colors hover:text-ink ${
+                  showExtras ? "" : "mb-0"
+                }`}
+              >
+                <IconChevronRight
+                  className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${showExtras ? "rotate-90" : ""}`}
+                />
+                <span className="whitespace-nowrap">
+                  Extra charge <span className="normal-case">(optional)</span>
+                </span>
+                {!showExtras && extrasSummary && (
+                  <span className="ml-auto min-w-0 truncate pl-3 tracking-normal text-ink-700 normal-case tabular-nums">
+                    {extrasSummary}
+                  </span>
+                )}
+              </button>
+              {showExtras && (
+                <fieldset id="g-extras">
+                  <legend className="sr-only">Extra charge for each choice</legend>
+                  <div className="divide-y divide-cream-200 rounded-sm border border-cream-300 bg-white">
+                    {choices.map((c) => {
+                      const key = c.toLowerCase();
+                      return (
+                        <label key={key} className="flex items-center gap-3 px-3.5 py-2">
+                          <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{c}</span>
+                          <span className="text-[0.875rem] text-ink-400">+$</span>
+                          <input
+                            value={extras[key] ?? ""}
+                            onChange={(e) => setExtras((x) => ({ ...x, [key]: e.target.value }))}
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            aria-label={`Extra charge for ${c}`}
+                            className="field-input h-9 w-24 py-0 text-right tabular-nums"
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1.5 text-xs text-ink-400">Leave blank if it costs nothing extra.</p>
+                </fieldset>
+              )}
+            </div>
           )}
 
           <fieldset>
