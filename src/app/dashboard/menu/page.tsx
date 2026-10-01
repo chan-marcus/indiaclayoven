@@ -6,6 +6,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
 import { reportFailure } from "@/lib/restaurant-data";
 import { shrinkImage } from "@/lib/shrink-image";
+import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { currency } from "@/lib/format";
 import type { MenuItem, OptionGroup } from "@/lib/types";
 import { IconClose, IconEdit, IconPlus, IconSearch, IconTrash } from "@/components/ui/icons";
@@ -359,6 +360,7 @@ export default function MenuManagerPage() {
         <BulkOptionsBar
           count={visibleSelected.length}
           groups={optionGroups}
+          countWith={(groupId) => rows.filter((r) => selected.has(r.id) && r.optionGroupIds.includes(groupId)).length}
           onApply={async (groupId, attached) => {
             try {
               await setOptionGroupOnItems(groupId, visibleSelected, attached);
@@ -429,7 +431,7 @@ export default function MenuManagerPage() {
           title={`Delete “${confirmDelete.name}”?`}
           body={
             <>
-              <span className="block">It comes off your website straight away.</span>
+              <span className="block">It comes off your website now.</span>
               {confirmDelete.image && <span className="block">Its photo is deleted too.</span>}
               <span className="block">This can’t be undone.</span>
             </>
@@ -449,7 +451,7 @@ export default function MenuManagerPage() {
           body={
             <>
               <span className="block">{usedByText(usedBy(confirmDeleteGroup.id).length)}</span>
-              <span className="block">Orders already placed keep their choices.</span>
+              <span className="block">Past orders keep their choices.</span>
               <span className="block">This can’t be undone.</span>
             </>
           }
@@ -490,19 +492,25 @@ function parseChoices(raw: string): string[] {
 function BulkOptionsBar({
   count,
   groups,
+  countWith,
   onApply,
   onNewGroup,
   onClear,
 }: {
   count: number;
   groups: OptionGroup[];
+  /** How many of the selected dishes already have this option. */
+  countWith: (groupId: string) => number;
   onApply: (groupId: string, attached: boolean) => Promise<void>;
   onNewGroup: () => void;
   onClear: () => void;
 }) {
   const [groupId, setGroupId] = useState(groups[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const current = groups.some((g) => g.id === groupId) ? groupId : (groups[0]?.id ?? "");
+  const currentGroup = groups.find((g) => g.id === current);
+  const removable = current ? countWith(current) : 0;
 
   const apply = async (attached: boolean) => {
     setBusy(true);
@@ -511,47 +519,74 @@ function BulkOptionsBar({
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-cream-300 bg-cream/95 backdrop-blur">
-      <div className="container-page flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
-        <span className="text-[0.875rem] font-medium whitespace-nowrap">
-          {count} {count === 1 ? "dish" : "dishes"} selected
-        </span>
-        {groups.length > 0 ? (
-          <>
-            <select
-              value={current}
-              onChange={(e) => setGroupId(e.target.value)}
-              aria-label="Option to add or remove"
-              className="field-input h-9 w-auto max-w-[12rem] py-0 text-[0.875rem]"
-            >
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-            <button type="button" disabled={busy} onClick={() => apply(true)} className="btn btn-primary btn-sm">
-              Add to dishes
+    <>
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-cream-300 bg-cream/95 backdrop-blur">
+        <div className="container-page flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+          <span className="text-[0.875rem] font-medium whitespace-nowrap">
+            {count} {count === 1 ? "dish" : "dishes"} selected
+          </span>
+          {groups.length > 0 ? (
+            <>
+              <select
+                value={current}
+                onChange={(e) => setGroupId(e.target.value)}
+                aria-label="Option to add or remove"
+                className="field-input h-9 w-auto max-w-[12rem] py-0 text-[0.875rem]"
+              >
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+              <button type="button" disabled={busy} onClick={() => apply(true)} className="btn btn-primary btn-sm">
+                Add to dishes
+              </button>
+              <button
+                type="button"
+                disabled={busy || removable === 0}
+                title={removable === 0 ? "None of the selected dishes have this option" : undefined}
+                onClick={() => setConfirmRemove(true)}
+                className="btn btn-secondary btn-sm"
+              >
+                Remove
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={onNewGroup} className="btn btn-primary btn-sm">
+              <IconPlus className="h-4 w-4" />
+              Add Options
             </button>
-            <button type="button" disabled={busy} onClick={() => apply(false)} className="btn btn-secondary btn-sm">
-              Remove
-            </button>
-          </>
-        ) : (
-          <button type="button" onClick={onNewGroup} className="btn btn-primary btn-sm">
-            <IconPlus className="h-4 w-4" />
-            Add Options
+          )}
+          <button
+            type="button"
+            onClick={onClear}
+            className="ml-auto text-[0.8125rem] text-ink-500 underline-offset-4 hover:text-ink hover:underline"
+          >
+            Clear
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onClear}
-          className="ml-auto text-[0.8125rem] text-ink-500 underline-offset-4 hover:text-ink hover:underline"
-        >
-          Clear
-        </button>
+        </div>
       </div>
-    </div>
+
+      {/* Outside the bar: its backdrop blur would trap a fixed dialog inside it. */}
+      {confirmRemove && currentGroup && (
+        <ConfirmDialog
+          title={`Remove “${currentGroup.name}” from ${removable} ${removable === 1 ? "dish" : "dishes"}?`}
+          body={
+            <>
+              <span className="block">Customers won’t be asked for it.</span>
+              <span className="block">You can add it back at any time.</span>
+            </>
+          }
+          confirmLabel="Remove"
+          onCancel={() => setConfirmRemove(false)}
+          onConfirm={async () => {
+            setConfirmRemove(false);
+            await apply(false);
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -1085,42 +1120,6 @@ function ItemEditor({
           </button>
         </div>
       </form>
-    </div>
-  );
-}
-
-function ConfirmDialog({
-  title,
-  body,
-  confirmLabel,
-  onCancel,
-  onConfirm,
-}: {
-  title: string;
-  body: React.ReactNode;
-  confirmLabel: string;
-  onCancel: () => void;
-  onConfirm: () => void | Promise<void>;
-}) {
-  return (
-    <div className="fixed inset-0 z-80 flex items-center justify-center p-6" role="dialog" aria-modal="true">
-      <button type="button" aria-label="Cancel" onClick={onCancel} className="absolute inset-0 animate-fade-in bg-ink/45" />
-      <div className="relative w-full max-w-sm animate-rise rounded-sm bg-cream p-6">
-        <h2 className="font-display text-xl">{title}</h2>
-        <p className="mt-2 text-[0.9375rem] leading-relaxed text-ink-500">{body}</p>
-        <div className="mt-6 flex gap-3">
-          <button type="button" onClick={onCancel} className="btn btn-secondary flex-1">
-            Keep it
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="btn flex-1 bg-danger text-cream hover:opacity-90"
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

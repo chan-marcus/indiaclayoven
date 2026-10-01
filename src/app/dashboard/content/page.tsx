@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { reportFailure, useRestaurantData } from "@/lib/restaurant-data";
 import { DEFAULT_TEXT, SITE_TEXT, type TextKey } from "@/lib/site-text";
 import { IconArrowRight, IconCheck } from "@/components/ui/icons";
+import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 
 /** Widths the preview renders the page at, so wraps match real screens. */
 const DEVICES = { desktop: 1280, phone: 390 } as const;
@@ -18,6 +19,7 @@ export default function EditWebsitePage() {
   const [saved, setSaved] = useState(false);
   const [device, setDevice] = useState<Device>("desktop");
   const [showPreview, setShowPreview] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const page = SITE_TEXT[pageIndex];
   const value = (key: TextKey) => draft[key] ?? text[key];
@@ -263,7 +265,7 @@ export default function EditWebsitePage() {
               </span>
               <button
                 type="button"
-                onClick={() => setDraft({})}
+                onClick={() => setConfirmDiscard(true)}
                 className="text-[0.8125rem] text-ink-500 underline-offset-4 hover:text-ink hover:underline"
               >
                 Discard
@@ -287,6 +289,25 @@ export default function EditWebsitePage() {
           </a>
         </div>
       </div>
+
+      {confirmDiscard && (
+        <ConfirmDialog
+          title={`Discard ${unsaved.length} unsaved ${unsaved.length === 1 ? "change" : "changes"}?`}
+          body={
+            <>
+              <span className="block">Your text goes back to what’s live.</span>
+              <span className="block">This can’t be undone.</span>
+            </>
+          }
+          confirmLabel="Discard"
+          cancelLabel="Keep editing"
+          onCancel={() => setConfirmDiscard(false)}
+          onConfirm={() => {
+            setDraft({});
+            setConfirmDiscard(false);
+          }}
+        />
+      )}
     </div>
   );
 }
