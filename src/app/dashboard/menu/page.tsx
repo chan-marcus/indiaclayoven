@@ -337,6 +337,7 @@ export default function MenuManagerPage() {
           item={editing}
           categories={categories}
           optionGroups={optionGroups}
+          onEditGroup={(g) => setGroupEditor({ group: g, itemIds: usedBy(g.id).map((i) => i.id) })}
           onClose={() => {
             setEditing(null);
             setCreating(false);
@@ -737,12 +738,15 @@ function ItemEditor({
   item,
   categories,
   optionGroups,
+  onEditGroup,
   onClose,
   onSave,
 }: {
   item: MenuItem | null;
   categories: { id: string; name: string }[];
   optionGroups: OptionGroup[];
+  /** Opens the shared editor for an option group, above this one. */
+  onEditGroup: (group: OptionGroup) => void;
   onClose: () => void;
   /** `photo` is a new, already-resized picture, "remove" to take it off, or null to leave it. */
   onSave: (patch: Partial<MenuItem>, photo: Blob | "remove" | null) => Promise<void>;
@@ -753,8 +757,14 @@ function ItemEditor({
     price: item ? String(item.price) : "",
     categoryId: item?.categoryId ?? categories[0].id,
     available: item?.available ?? true,
-    optionGroupIds: item?.optionGroupIds ?? [],
   });
+  // Until the owner ticks or unticks an option here, follow the saved dish,
+  // so changes made through Edit (which can add or remove this dish) show
+  // straight away and aren't overwritten on save.
+  const { items } = useDashboard();
+  const savedGroupIds = items.find((i) => i.id === item?.id)?.optionGroupIds ?? [];
+  const [pickedGroupIds, setPickedGroupIds] = useState<string[] | null>(null);
+  const groupIds = pickedGroupIds ?? savedGroupIds;
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   /** The owner pressed Remove on the dish's saved photo. */
@@ -802,7 +812,7 @@ function ItemEditor({
       price: Number(form.price) || 0,
       categoryId: form.categoryId,
       available: form.available,
-      optionGroupIds: form.optionGroupIds,
+      ...(pickedGroupIds && { optionGroupIds: pickedGroupIds }),
     }, photo ?? (removePhoto ? "remove" : null));
   };
 
@@ -940,28 +950,38 @@ function ItemEditor({
               <legend className="field-label">Options the customer picks</legend>
               <div className="grid gap-2">
                 {optionGroups.map((g) => (
-                  <label
+                  <div
                     key={g.id}
-                    className="flex cursor-pointer items-center gap-3 rounded-sm border border-cream-300 bg-white px-3.5 py-2.5"
+                    className="flex items-center gap-2 rounded-sm border border-cream-300 bg-white pr-2"
                   >
-                    <input
-                      type="checkbox"
-                      checked={form.optionGroupIds.includes(g.id)}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          optionGroupIds: e.target.checked
-                            ? [...form.optionGroupIds, g.id]
-                            : form.optionGroupIds.filter((x) => x !== g.id),
-                        })
-                      }
-                      className="h-4 w-4 shrink-0 accent-[#6b2318]"
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-[0.9375rem]">{g.name}</span>
-                      <span className="block truncate text-xs text-ink-500">{g.options.join(" · ")}</span>
-                    </span>
-                  </label>
+                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-2.5 pl-3.5">
+                      <input
+                        type="checkbox"
+                        checked={groupIds.includes(g.id)}
+                        onChange={(e) =>
+                          setPickedGroupIds(
+                            e.target.checked
+                              ? [...groupIds.filter((x) => x !== g.id), g.id]
+                              : groupIds.filter((x) => x !== g.id),
+                          )
+                        }
+                        className="h-4 w-4 shrink-0 accent-[#6b2318]"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-[0.9375rem]">{g.name}</span>
+                        <span className="block truncate text-xs text-ink-500">{g.options.join(" · ")}</span>
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => onEditGroup(g)}
+                      aria-label={`Edit ${g.name}`}
+                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xs px-2.5 text-[0.8125rem] text-ink-500 transition-colors hover:bg-cream-100 hover:text-ink"
+                    >
+                      <IconEdit className="h-4 w-4" />
+                      Edit
+                    </button>
+                  </div>
                 ))}
               </div>
             </fieldset>
