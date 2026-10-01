@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
 import { reportFailure } from "@/lib/restaurant-data";
+import { shrinkImage } from "@/lib/shrink-image";
 import { currency } from "@/lib/format";
 import type { MenuItem, OptionGroup } from "@/lib/types";
 import { IconClose, IconEdit, IconPlus, IconSearch, IconTrash } from "@/components/ui/icons";
@@ -20,6 +21,7 @@ export default function MenuManagerPage() {
     addCategory,
     deleteOptionGroup,
     setOptionGroupOnItems,
+    uploadItemImage,
   } = useDashboard();
 
   const [query, setQuery] = useState("");
@@ -226,9 +228,15 @@ export default function MenuManagerPage() {
                     aria-label={`Select ${item.name}`}
                     className="mt-3.5 h-4 w-4 shrink-0 accent-[#6b2318] lg:mt-0"
                   />
-                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-sm bg-cream-100">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(item)}
+                    aria-label={`Change the photo for ${item.name}`}
+                    title="Change photo"
+                    className="relative h-11 w-11 shrink-0 overflow-hidden rounded-sm bg-cream-100 transition-opacity hover:opacity-80"
+                  >
                     <Image src={item.image} alt="" fill sizes="44px" className="object-cover" />
-                  </div>
+                  </button>
 
                   <div className="min-w-0 flex-1">
                     <p className="text-[0.9375rem] leading-snug font-medium lg:truncate">
@@ -331,10 +339,12 @@ export default function MenuManagerPage() {
             setEditing(null);
             setCreating(false);
           }}
-          onSave={(patch) => {
-            if (editing) updateItem(editing.id, patch);
-            else
-              addItem({
+          onSave={async (patch, photo) => {
+            if (editing) {
+              await updateItem(editing.id, patch);
+              if (photo) await uploadItemImage(editing.id, photo);
+            } else {
+              const created = await addItem({
                 name: patch.name ?? "New dish",
                 description: patch.description,
                 price: patch.price ?? 0,
@@ -342,6 +352,8 @@ export default function MenuManagerPage() {
                 available: patch.available ?? true,
                 optionGroupIds: patch.optionGroupIds ?? [],
               });
+              if (created && photo) await uploadItemImage(created.id, photo);
+            }
             setEditing(null);
             setCreating(false);
           }}
@@ -729,7 +741,8 @@ function ItemEditor({
   categories: { id: string; name: string }[];
   optionGroups: OptionGroup[];
   onClose: () => void;
-  onSave: (patch: Partial<MenuItem>) => void;
+  /** `photo` is a new, already-resized picture, if one was chosen. */
+  onSave: (patch: Partial<MenuItem>, photo: Blob | null) => Promise<void>;
 }) {
   const [form, setForm] = useState({
     name: item?.name ?? "",
@@ -739,17 +752,44 @@ function ItemEditor({
     available: item?.available ?? true,
     optionGroupIds: item?.optionGroupIds ?? [],
   });
+  const [photo, setPhoto] = useState<Blob | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState("");
+  const [preparing, setPreparing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const save = (e: React.FormEvent) => {
+  // Free the preview's memory when it's replaced or the editor closes.
+  useEffect(() => () => void (photoUrl && URL.revokeObjectURL(photoUrl)), [photoUrl]);
+
+  const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError("");
+    setPreparing(true);
+    try {
+      const small = await shrinkImage(file);
+      if (small.size > 4 * 1024 * 1024) throw new Error("That photo is too large. Use one under 4 MB.");
+      setPhoto(small);
+      setPhotoUrl(URL.createObjectURL(small));
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPreparing(false);
+    }
+  };
+
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
+    setSaving(true);
+    await onSave({
       name: form.name.trim(),
       description: form.description.trim(),
       price: Number(form.price) || 0,
       categoryId: form.categoryId,
       available: form.available,
       optionGroupIds: form.optionGroupIds,
-    });
+    }, photo);
   };
 
   return (
@@ -772,6 +812,35 @@ function ItemEditor({
         </div>
 
         <div className="mt-5 grid gap-4">
+          <div>
+            <span className="field-label">Photo</span>
+            <div className="flex items-center gap-4">
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-sm bg-cream-200">
+                <Image
+                  src={photoUrl ?? item?.image ?? "/images/curry-spread.jpg"}
+                  alt=""
+                  fill
+                  sizes="96px"
+                  unoptimized={Boolean(photoUrl)}
+                  className="object-cover"
+                />
+              </div>
+              <div className="min-w-0">
+                <label className="btn btn-secondary btn-sm cursor-pointer has-focus-visible:ring-2 has-focus-visible:ring-gold">
+                  <input type="file" accept="image/*" onChange={pickPhoto} className="sr-only" />
+                  {preparing ? "Preparing…" : item || photoUrl ? "Change photo" : "Upload photo"}
+                </label>
+                <p className="mt-1.5 text-xs text-ink-400">
+                  {photoUrl ? "Save to use this photo." : "JPG or PNG, any size."}
+                </p>
+              </div>
+            </div>
+            {photoError && (
+              <p role="alert" className="mt-2 text-[0.8125rem] text-danger">
+                {photoError}
+              </p>
+            )}
+          </div>
           <div>
             <label htmlFor="i-name" className="field-label">
               Name
@@ -877,8 +946,8 @@ function ItemEditor({
           <button type="button" onClick={onClose} className="btn btn-secondary flex-1">
             Cancel
           </button>
-          <button type="submit" className="btn btn-primary flex-1">
-            {item ? "Save changes" : "Add to menu"}
+          <button type="submit" disabled={saving || preparing} className="btn btn-primary flex-1">
+            {saving ? "Saving…" : item ? "Save changes" : "Add to menu"}
           </button>
         </div>
       </form>

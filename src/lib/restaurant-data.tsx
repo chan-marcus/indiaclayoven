@@ -15,6 +15,7 @@ import {
   updateMenuItem,
   updateRestaurant,
   updateSiteText,
+  uploadMenuItemImage,
 } from "@/app/actions";
 import { unwrap } from "@/lib/action-result";
 
@@ -50,7 +51,10 @@ type SettingsInput = Parameters<typeof updateRestaurant>[0];
 interface DataValue extends PublicData {
   toggleAvailability: (id: string) => Promise<void>;
   updateItem: (id: string, patch: Partial<ItemInput>) => Promise<void>;
-  addItem: (item: ItemInput & { image?: string }) => Promise<void>;
+  /** Resolves to the new dish, or undefined if it could not be added. */
+  addItem: (item: ItemInput & { image?: string }) => Promise<MenuItem | undefined>;
+  /** Uploads a new photo for the dish. */
+  uploadItemImage: (id: string, photo: Blob) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
   addCategory: (name: string) => Promise<void>;
   /** The option-group writes reject with the reason so the form can show it. */
@@ -130,8 +134,19 @@ export function RestaurantDataProvider({
       try {
         const created = unwrap(await createMenuItem(input));
         setItems((s) => [...s, created]);
+        return created;
       } catch (err) {
         reportFailure("add that dish", err);
+      }
+    },
+
+    uploadItemImage: async (id, photo) => {
+      const form = new FormData();
+      form.append("photo", photo, "photo");
+      try {
+        replaceItem(unwrap(await uploadMenuItemImage(id, form)));
+      } catch (err) {
+        reportFailure("upload that photo", err);
       }
     },
 

@@ -237,16 +237,75 @@ export async function createMenuItem(
   });
 }
 
+const IMAGE_BUCKET = "menu-images";
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
+/** Reads the file's first bytes, so a renamed non-image is refused. */
+function imageType(bytes: Uint8Array): { mime: string; ext: string } | null {
+  const at = (i: number, ...b: number[]) => b.every((v, k) => bytes[i + k] === v);
+  if (at(0, 0xff, 0xd8, 0xff)) return { mime: "image/jpeg", ext: "jpg" };
+  if (at(0, 0x89, 0x50, 0x4e, 0x47)) return { mime: "image/png", ext: "png" };
+  if (at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50)) return { mime: "image/webp", ext: "webp" };
+  return null;
+}
+
+/** The path inside the bucket, if this URL is a photo uploaded here. */
+function uploadedPath(url: string): string | null {
+  const marker = `/storage/v1/object/public/${IMAGE_BUCKET}/`;
+  const i = url.indexOf(marker);
+  return i === -1 ? null : decodeURIComponent(url.slice(i + marker.length));
+}
+
+/** Replaces a dish's photo. Expects the file under "photo" in the form data. */
+export async function uploadMenuItemImage(id: string, form: FormData): Promise<ActionResult<MenuItem>> {
+  return run(async () => {
+    const itemId = text(id, "Item", 100);
+    const file = form.get("photo");
+    if (!(file instanceof File) || file.size === 0) throw new InputError("Choose a photo to upload");
+    if (file.size > MAX_IMAGE_BYTES) throw new InputError("That photo is too large. Use one under 4 MB.");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const type = imageType(bytes);
+    if (!type) throw new InputError("Use a JPG, PNG or WebP photo");
+
+    const current = check<{ image: string }>(
+      await supabase.from("menu_items").select("image").eq("id", itemId).eq("restaurant_id", RESTAURANT_ID).single(),
+      "find the dish",
+    );
+
+    const path = `${RESTAURANT_ID}/${itemId}/${crypto.randomUUID()}.${type.ext}`;
+    const { error } = await supabase.storage
+      .from(IMAGE_BUCKET)
+      .upload(path, bytes, { contentType: type.mime, cacheControl: "31536000", upsert: false });
+    if (error) throw new Error(`Could not upload the photo: ${error.message}`);
+    const url = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path).data.publicUrl;
+
+    check(
+      await supabase.from("menu_items").update({ image: url }).eq("id", itemId).eq("restaurant_id", RESTAURANT_ID),
+      "save the photo",
+    );
+
+    // Tidy up the photo it replaced; a failure here only leaves an unused file.
+    const old = uploadedPath(current.image);
+    if (old) await supabase.storage.from(IMAGE_BUCKET).remove([old]);
+
+    refreshSite();
+    return loadItem(itemId);
+  });
+}
+
 export async function deleteMenuItem(id: string): Promise<ActionResult<void>> {
   return run(async () => {
-    check(
+    const removed = check<{ image: string }[]>(
       await supabase
         .from("menu_items")
         .delete()
         .eq("id", text(id, "Item"))
-        .eq("restaurant_id", RESTAURANT_ID),
+        .eq("restaurant_id", RESTAURANT_ID)
+        .select("image"),
       "remove the dish",
     );
+    const photo = removed[0] && uploadedPath(removed[0].image);
+    if (photo) await supabase.storage.from(IMAGE_BUCKET).remove([photo]);
     refreshSite();
   });
 }
