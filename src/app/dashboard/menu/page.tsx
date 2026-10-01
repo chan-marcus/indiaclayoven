@@ -601,6 +601,86 @@ function BulkOptionsBar({
   );
 }
 
+type PriceMode = "none" | "extra" | "own";
+
+const PRICE_MODES: { value: PriceMode; label: string; hint: string }[] = [
+  { value: "none", label: "No extra cost", hint: "Like a spice level." },
+  { value: "extra", label: "Some choices cost extra", hint: "Added on every dish." },
+  { value: "own", label: "Each choice has its own price", hint: "Like Half $15 and Whole $26." },
+];
+
+/**
+ * One collapsible Price section for an option. Starts closed, with a short
+ * summary so a price that's already set is never hidden. The extra-charge
+ * boxes (children) show under "Some choices cost extra" when it's picked.
+ */
+function PriceSection({
+  mode,
+  onMode,
+  summary,
+  children,
+}: {
+  mode: PriceMode;
+  onMode: (m: PriceMode) => void;
+  summary: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls="g-price"
+        className={`field-label flex w-full items-center gap-1.5 text-left transition-colors hover:text-ink ${
+          open ? "" : "mb-0"
+        }`}
+      >
+        <IconChevronRight
+          className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+        />
+        <span className="whitespace-nowrap">
+          Price <span className="normal-case">(optional)</span>
+        </span>
+        {!open && summary && (
+          <span className="ml-auto min-w-0 truncate pl-3 tracking-normal text-ink-700 normal-case tabular-nums">
+            {summary}
+          </span>
+        )}
+      </button>
+      {open && (
+        <fieldset id="g-price" className="divide-y divide-cream-200 rounded-sm border border-cream-300 bg-white">
+          <legend className="sr-only">How this option affects the price</legend>
+          {PRICE_MODES.map((m) => (
+            <div key={m.value}>
+              <label className="flex cursor-pointer items-start gap-3 px-3.5 py-3">
+                <input
+                  type="radio"
+                  name="g-price-mode"
+                  checked={mode === m.value}
+                  onChange={() => onMode(m.value)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-[#6b2318]"
+                />
+                <span className="min-w-0">
+                  <span className="block text-[0.9375rem]">{m.label}</span>
+                  <span className="block text-xs text-ink-500">{m.hint}</span>
+                </span>
+              </label>
+              {m.value === "extra" && mode === "extra" && children}
+              {m.value === "own" && mode === "own" && (
+                <p className="border-t border-cream-200 py-2.5 pr-3.5 pl-10 text-xs text-ink-500">
+                  You set them on each dish.
+                </p>
+              )}
+            </div>
+          ))}
+        </fieldset>
+      )}
+    </div>
+  );
+}
+
 function OptionGroupEditor({
   group,
   initialItemIds,
@@ -624,10 +704,14 @@ function OptionGroupEditor({
   const [picked, setPicked] = useState<Set<string>>(new Set(initialItemIds));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  /** Extra charges are tucked away until the owner opens them. */
-  const [showExtras, setShowExtras] = useState(false);
-  /** Each choice has its own price, set on each dish (Half $15, Whole $26). */
-  const [setsPrice, setSetsPrice] = useState(group?.setsPrice ?? false);
+  /**
+   * How the option affects price: not at all, a fixed extra on some choices
+   * (+$3 on every dish), or its own price per choice set on each dish
+   * (Half $15, Whole $26).
+   */
+  const [priceMode, setPriceMode] = useState<PriceMode>(
+    group?.setsPrice ? "own" : group?.prices.some((p) => p > 0) ? "extra" : "none",
+  );
 
   const choices = parseChoices(choicesRaw);
   // Shown beside the closed section so charges already set aren't missed.
@@ -653,12 +737,13 @@ function OptionGroupEditor({
     setSaving(true);
     try {
       const prices = choices.map((c) => {
+        if (priceMode !== "extra") return 0;
         const raw = (extras[c.toLowerCase()] ?? "").replace(/[$\s]/g, "");
         const n = raw === "" ? 0 : Number(raw);
         if (!Number.isFinite(n) || n < 0) throw new Error(`The extra charge for ${c} must be an amount, like 4.00`);
         return Math.round(n * 100) / 100;
       });
-      const input = { name: name.trim(), options: choices, prices, setsPrice };
+      const input = { name: name.trim(), options: choices, prices, setsPrice: priceMode === "own" };
       let id = group?.id;
       if (id) await updateOptionGroup(id, input);
       else id = (await addOptionGroup(input)).id;
@@ -724,69 +809,32 @@ function OptionGroupEditor({
             <p className="mt-1.5 text-xs text-ink-400">Put a comma between each choice.</p>
           </div>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-sm border border-cream-300 bg-white p-3.5">
-            <input
-              type="checkbox"
-              checked={setsPrice}
-              onChange={(e) => setSetsPrice(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-[#6b2318]"
-            />
-            <span className="min-w-0">
-              <span className="block text-[0.9375rem]">Each choice has its own price</span>
-              <span className="block text-xs text-ink-500">Like Half $15 and Whole $26.</span>
-              <span className="block text-xs text-ink-500">You set the prices on each dish.</span>
-            </span>
-          </label>
-
-          {choices.length > 0 && !setsPrice && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowExtras((v) => !v)}
-                aria-expanded={showExtras}
-                aria-controls="g-extras"
-                className={`field-label flex w-full items-center gap-1.5 text-left transition-colors hover:text-ink ${
-                  showExtras ? "" : "mb-0"
-                }`}
-              >
-                <IconChevronRight
-                  className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${showExtras ? "rotate-90" : ""}`}
-                />
-                <span className="whitespace-nowrap">
-                  Extra charge <span className="normal-case">(optional)</span>
-                </span>
-                {!showExtras && extrasSummary && (
-                  <span className="ml-auto min-w-0 truncate pl-3 tracking-normal text-ink-700 normal-case tabular-nums">
-                    {extrasSummary}
-                  </span>
-                )}
-              </button>
-              {showExtras && (
-                <fieldset id="g-extras">
-                  <legend className="sr-only">Extra charge for each choice</legend>
-                  <div className="divide-y divide-cream-200 rounded-sm border border-cream-300 bg-white">
-                    {choices.map((c) => {
-                      const key = c.toLowerCase();
-                      return (
-                        <label key={key} className="flex items-center gap-3 px-3.5 py-2">
-                          <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{c}</span>
-                          <span className="text-[0.875rem] text-ink-400">+$</span>
-                          <input
-                            value={extras[key] ?? ""}
-                            onChange={(e) => setExtras((x) => ({ ...x, [key]: e.target.value }))}
-                            inputMode="decimal"
-                            placeholder="0.00"
-                            aria-label={`Extra charge for ${c}`}
-                            className="field-input h-9 w-24 py-0 text-right tabular-nums"
-                          />
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-1.5 text-xs text-ink-400">Leave blank if it costs nothing extra.</p>
-                </fieldset>
-              )}
-            </div>
+          {choices.length > 0 && (
+            <PriceSection
+              mode={priceMode}
+              onMode={setPriceMode}
+              summary={priceMode === "own" ? "Own price per dish" : priceMode === "extra" ? extrasSummary : ""}
+            >
+              <div className="divide-y divide-cream-200 border-t border-cream-200">
+                {choices.map((c) => {
+                  const key = c.toLowerCase();
+                  return (
+                    <label key={key} className="flex items-center gap-3 py-2 pr-3.5 pl-10">
+                      <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{c}</span>
+                      <span className="text-[0.875rem] text-ink-400">+$</span>
+                      <input
+                        value={extras[key] ?? ""}
+                        onChange={(e) => setExtras((x) => ({ ...x, [key]: e.target.value }))}
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        aria-label={`Extra charge for ${c}`}
+                        className="field-input h-9 w-24 py-0 text-right tabular-nums"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </PriceSection>
           )}
 
           <fieldset>
