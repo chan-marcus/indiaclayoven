@@ -3,7 +3,7 @@ import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import { RestaurantDataProvider } from "@/lib/restaurant-data";
-import { getCategories, getMenuItems, getOptionGroups, getRestaurant, getSiteText } from "@/lib/db";
+import { getCategories, getMenuItems, getOptionGroups, getRestaurant, getSiteImages, getSiteText } from "@/lib/db";
 import { fullAddress } from "@/lib/restaurant";
 
 const playfair = Playfair_Display({
@@ -42,18 +42,19 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [settings, categories, items, optionGroups, text] = await Promise.all([
+  const [settings, categories, items, optionGroups, text, images] = await Promise.all([
     getRestaurant(),
     getCategories(),
     getMenuItems(),
     getOptionGroups(),
     getSiteText(),
+    getSiteImages(),
   ]);
 
   return (
     <html lang="en" className={`${playfair.variable} ${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <RestaurantDataProvider initial={{ settings, categories, items, optionGroups, text }}>
+        <RestaurantDataProvider initial={{ settings, categories, items, optionGroups, text, images }}>
           <CartProvider>{children}</CartProvider>
         </RestaurantDataProvider>
       </body>

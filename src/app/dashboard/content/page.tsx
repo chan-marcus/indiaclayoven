@@ -1,8 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { reportFailure, useRestaurantData } from "@/lib/restaurant-data";
 import { DEFAULT_TEXT, SITE_TEXT, type TextKey } from "@/lib/site-text";
+import { DEFAULT_IMAGES, SITE_IMAGES } from "@/lib/site-images";
+import { uploadSiteImage } from "@/app/actions";
+import { unwrap } from "@/lib/action-result";
+import { shrinkImage } from "@/lib/shrink-image";
 import { IconArrowRight, IconCheck } from "@/components/ui/icons";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 
@@ -11,10 +16,15 @@ const DEVICES = { desktop: 1280, phone: 390 } as const;
 type Device = keyof typeof DEVICES;
 
 export default function EditWebsitePage() {
-  const { text, settings, updateText } = useRestaurantData();
+  const { text, images, settings, updateText, updateImages } = useRestaurantData();
   const [pageIndex, setPageIndex] = useState(0);
   const [draft, setDraft] = useState<Partial<Record<TextKey, string>>>({});
-  const [focused, setFocused] = useState<TextKey | undefined>();
+  /** Photo key → a new photo (already uploaded, not saved), or the original to reset to. */
+  const [imageDraft, setImageDraft] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
+  const [imageErrors, setImageErrors] = useState<Record<string, string>>({});
+  /** The text field or photo being edited, outlined in the preview. */
+  const [focused, setFocused] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [device, setDevice] = useState<Device>("desktop");
@@ -23,18 +33,47 @@ export default function EditWebsitePage() {
 
   const page = SITE_TEXT[pageIndex];
   const value = (key: TextKey) => draft[key] ?? text[key];
-  const unsaved = (Object.entries(draft) as [TextKey, string][]).filter(([k, v]) => v !== text[k]);
+  const unsavedText = (Object.entries(draft) as [TextKey, string][]).filter(([k, v]) => v !== text[k]);
+  const unsavedImages = Object.entries(imageDraft).filter(([k, v]) => v !== images[k]);
+  const unsavedCount = unsavedText.length + unsavedImages.length;
+  const imageValue = (key: string) => imageDraft[key] ?? images[key];
 
   const set = (key: TextKey, v: string) => {
     setSaved(false);
     setDraft((d) => ({ ...d, [key]: v }));
   };
 
+  const setImage = (key: string, url: string) => {
+    setSaved(false);
+    setImageDraft((d) => ({ ...d, [key]: url }));
+  };
+
+  /** Shrinks and uploads a photo; it shows in the preview and goes live on Save. */
+  const pickImage = async (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setFocused(key);
+    setImageErrors((x) => ({ ...x, [key]: "" }));
+    setUploading((u) => ({ ...u, [key]: true }));
+    try {
+      const form = new FormData();
+      form.append("photo", await shrinkImage(file, 2400), "photo");
+      setImage(key, unwrap(await uploadSiteImage(key, form)));
+    } catch (err) {
+      setImageErrors((x) => ({ ...x, [key]: err instanceof Error ? err.message : String(err) }));
+    } finally {
+      setUploading((u) => ({ ...u, [key]: false }));
+    }
+  };
+
   const save = async () => {
     setSaving(true);
     try {
-      await updateText(Object.fromEntries(unsaved));
+      if (unsavedText.length) await updateText(Object.fromEntries(unsavedText));
+      if (unsavedImages.length) await updateImages(Object.fromEntries(unsavedImages));
       setDraft({});
+      setImageDraft({});
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2600);
     } catch (err) {
@@ -68,12 +107,13 @@ export default function EditWebsitePage() {
       {
         type: "ico-preview",
         texts: { ...text, ...draft },
+        images: { ...images, ...imageDraft },
         vars: { phone: settings.phone, cuisine: settings.cuisine },
         focus: focused,
       },
       window.location.origin,
     );
-  }, [ready, text, draft, focused, settings.phone, settings.cuisine]);
+  }, [ready, text, draft, images, imageDraft, focused, settings.phone, settings.cuisine]);
 
   // Scale the page down to fit the panel, keeping its real width.
   useEffect(() => {
@@ -136,15 +176,15 @@ export default function EditWebsitePage() {
     <div className="container-page py-8 pb-28">
       <h1 className="font-display text-3xl">Edit Website</h1>
       <p className="mt-2 max-w-2xl text-[0.9375rem] leading-relaxed text-ink-500">
-        <span className="block">Edit the wording on any page.</span>
+        <span className="block">Edit the wording and photos on any page.</span>
         <span className="block">Press Enter for a new line on the page.</span>
       </p>
 
       <div className="mt-6 flex flex-wrap gap-2" role="tablist" aria-label="Pages">
         {SITE_TEXT.map((p, i) => {
-          const pending = p.sections.some((s) =>
-            s.fields.some((f) => f.key in draft && draft[f.key] !== text[f.key]),
-          );
+          const pending =
+            p.sections.some((s) => s.fields.some((f) => f.key in draft && draft[f.key] !== text[f.key])) ||
+            SITE_IMAGES.some((im) => im.page === p.page && im.key in imageDraft && imageDraft[im.key] !== images[im.key]);
           return (
             <button
               key={p.page}
@@ -187,6 +227,15 @@ export default function EditWebsitePage() {
           {page.sections.map((section) => (
             <section key={section.title} className="rounded-sm border border-cream-300 bg-white p-6">
               <h2 className="font-display text-xl">{section.title}</h2>
+              <SectionPhotos
+                photos={SITE_IMAGES.filter((im) => im.page === page.page && im.section === section.title)}
+                value={imageValue}
+                uploading={uploading}
+                errors={imageErrors}
+                onPick={pickImage}
+                onReset={(key) => setImage(key, DEFAULT_IMAGES[key])}
+                onFocus={setFocused}
+              />
               <div className="mt-5 space-y-5">
                 {section.fields.map((field) => {
                   const v = value(field.key);
@@ -253,15 +302,15 @@ export default function EditWebsitePage() {
           <button
             type="button"
             onClick={save}
-            disabled={saving || unsaved.length === 0}
+            disabled={saving || unsavedCount === 0 || Object.values(uploading).some(Boolean)}
             className="btn btn-primary btn-sm disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
-          {unsaved.length > 0 && !saving && (
+          {unsavedCount > 0 && !saving && (
             <>
               <span className="text-[0.8125rem] text-ink-500">
-                {unsaved.length} unsaved {unsaved.length === 1 ? "change" : "changes"}
+                {unsavedCount} unsaved {unsavedCount === 1 ? "change" : "changes"}
               </span>
               <button
                 type="button"
@@ -292,10 +341,10 @@ export default function EditWebsitePage() {
 
       {confirmDiscard && (
         <ConfirmDialog
-          title={`Discard ${unsaved.length} unsaved ${unsaved.length === 1 ? "change" : "changes"}?`}
+          title={`Discard ${unsavedCount} unsaved ${unsavedCount === 1 ? "change" : "changes"}?`}
           body={
             <>
-              <span className="block">Your text goes back to what’s live.</span>
+              <span className="block">Your edits go back to what’s live.</span>
               <span className="block">This can’t be undone.</span>
             </>
           }
@@ -304,10 +353,84 @@ export default function EditWebsitePage() {
           onCancel={() => setConfirmDiscard(false)}
           onConfirm={() => {
             setDraft({});
+            setImageDraft({});
             setConfirmDiscard(false);
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** Photo tiles for one Edit Website section, each with Change and Reset. */
+function SectionPhotos({
+  photos,
+  value,
+  uploading,
+  errors,
+  onPick,
+  onReset,
+  onFocus,
+}: {
+  photos: readonly { key: string; section: string; label: string }[];
+  value: (key: string) => string;
+  uploading: Record<string, boolean>;
+  errors: Record<string, string>;
+  onPick: (key: string, e: React.ChangeEvent<HTMLInputElement>) => void;
+  onReset: (key: string) => void;
+  onFocus: (key: string) => void;
+}) {
+  if (photos.length === 0) return null;
+  return (
+    <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3">
+      {photos.map((p) => {
+        const src = value(p.key);
+        const busy = uploading[p.key];
+        return (
+          <div key={p.key} className="min-w-0">
+            <button
+              type="button"
+              onClick={() => onFocus(p.key)}
+              aria-label={`Show ${p.section}, ${p.label} in the preview`}
+              className="relative block aspect-[4/3] w-full overflow-hidden rounded-sm bg-cream-200"
+            >
+              <Image src={src} alt="" fill sizes="160px" className="object-cover" />
+              {busy && (
+                <span className="absolute inset-0 flex items-center justify-center bg-ink/45 text-xs text-cream">
+                  Uploading…
+                </span>
+              )}
+            </button>
+            <p className="mt-1.5 truncate text-xs text-ink-500">{p.label}</p>
+            <div className="mt-0.5 flex gap-3 text-[0.8125rem]">
+              <label className="cursor-pointer text-ink-700 underline-offset-4 hover:text-ink hover:underline has-focus-visible:underline">
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={busy}
+                  onChange={(e) => onPick(p.key, e)}
+                  className="sr-only"
+                />
+                Change
+              </label>
+              {src !== DEFAULT_IMAGES[p.key] && (
+                <button
+                  type="button"
+                  onClick={() => onReset(p.key)}
+                  className="text-ink-500 underline-offset-4 hover:text-ink hover:underline"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            {errors[p.key] && (
+              <p role="alert" className="mt-1 text-xs text-danger">
+                {errors[p.key]}
+              </p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

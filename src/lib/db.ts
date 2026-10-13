@@ -16,6 +16,7 @@ import {
   type RestaurantRow,
 } from "@/lib/db-rows";
 import { mergeText } from "@/lib/site-text";
+import { mergeImages } from "@/lib/site-images";
 
 type Result = { data: unknown; error: { message: string } | null };
 
@@ -72,4 +73,11 @@ export const getSiteText = cache(async () => {
   const res = await supabase.from("site_content").select("key, value").eq("restaurant_id", RESTAURANT_ID);
   const saved = rows<{ key: string; value: string }[]>(res, "website text");
   return mergeText(Object.fromEntries(saved.map((r) => [r.key, r.value])));
+});
+
+/** Website photos: defaults with the owner's replacements from Dashboard → Edit Website. */
+export const getSiteImages = cache(async () => {
+  const res = await supabase.from("site_images").select("key, url").eq("restaurant_id", RESTAURANT_ID);
+  const saved = rows<{ key: string; url: string }[]>(res, "website photos");
+  return mergeImages(Object.fromEntries(saved.map((r) => [r.key, r.url])));
 });

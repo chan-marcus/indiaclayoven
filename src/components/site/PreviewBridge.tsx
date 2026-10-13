@@ -12,12 +12,16 @@ import { useEffect } from "react";
 type PreviewMessage = {
   type: "ico-preview";
   texts: Record<string, string>;
+  /** Website photo key → the photo to show (saved, or a new upload not saved yet). */
+  images?: Record<string, string>;
   vars: { phone: string; cuisine: string };
   focus?: string;
 };
 
 const STYLE = `
 [data-preview-focus] { outline: 2px solid #b4832f; outline-offset: 4px; border-radius: 2px; }
+/* Photos often fill the page width, so their outline goes inside the edge. */
+[data-preview-focus]:has(> img[data-image-key]) { outline-offset: -4px; }
 [data-text-key]:has(> [data-text-preview] > .block) { display: block; }
 `;
 
@@ -33,6 +37,21 @@ function render(target: HTMLElement, text: string) {
           return s;
         })),
   );
+}
+
+/**
+ * Centres an element in the preview. Scrolls only this page (scrollIntoView
+ * would also scroll the dashboard around the preview), plus the sideways
+ * gallery rail when the element sits in it.
+ */
+function reveal(el: Element) {
+  const r = el.getBoundingClientRect();
+  window.scrollTo({ top: window.scrollY + r.top - (window.innerHeight - r.height) / 2, behavior: "smooth" });
+  const rail = el.closest<HTMLElement>(".overflow-x-auto");
+  if (rail) {
+    const box = rail.getBoundingClientRect();
+    rail.scrollTo({ left: rail.scrollLeft + r.left - box.left - (box.width - r.width) / 2, behavior: "smooth" });
+  }
 }
 
 function apply(msg: PreviewMessage, scroll: boolean) {
@@ -58,8 +77,29 @@ function apply(msg: PreviewMessage, scroll: boolean) {
     else el.removeAttribute("data-preview-focus");
   });
 
-  const focused = scroll && msg.focus && document.querySelector(`[data-text-key="${CSS.escape(msg.focus)}"]`);
-  if (focused) focused.scrollIntoView({ block: "center", behavior: "smooth" });
+  // Photos: show the draft in place. The browser's responsive versions of
+  // the saved photo are dropped so the draft is what loads.
+  document.querySelectorAll<HTMLImageElement>("img[data-image-key]").forEach((im) => {
+    const key = im.dataset.imageKey!;
+    const url = msg.images?.[key];
+    if (url && im.dataset.previewSrc !== url) {
+      im.removeAttribute("srcset");
+      im.src = url;
+      im.dataset.previewSrc = url;
+    }
+    const box = im.parentElement;
+    if (!box) return;
+    if (key === msg.focus) box.setAttribute("data-preview-focus", "");
+    else box.removeAttribute("data-preview-focus");
+  });
+
+  const focused =
+    scroll &&
+    msg.focus &&
+    document.querySelector(
+      `[data-text-key="${CSS.escape(msg.focus)}"], img[data-image-key="${CSS.escape(msg.focus)}"]`,
+    );
+  if (focused) reveal(focused.matches("img") ? (focused.parentElement ?? focused) : focused);
 }
 
 export function PreviewBridge() {

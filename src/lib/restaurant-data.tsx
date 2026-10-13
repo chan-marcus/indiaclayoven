@@ -3,6 +3,7 @@
 import { createContext, useContext, useState } from "react";
 import type { Category, MenuItem, OptionGroup, Restaurant } from "@/lib/types";
 import type { SiteText } from "@/lib/site-text";
+import type { SiteImages } from "@/lib/site-images";
 import {
   createCategory,
   createMenuItem,
@@ -14,6 +15,7 @@ import {
   updateOptionGroup,
   updateMenuItem,
   updateRestaurant,
+  updateSiteImages,
   updateSiteText,
   removeMenuItemImage,
   uploadMenuItemImage,
@@ -40,6 +42,8 @@ export type PublicData = {
   optionGroups: OptionGroup[];
   /** Website wording, with the owner's edits. */
   text: SiteText;
+  /** Website photos, with the owner's replacements. */
+  images: SiteImages;
 };
 
 type ItemInput = Pick<
@@ -69,6 +73,8 @@ interface DataValue extends PublicData {
   updateSettings: (input: SettingsInput) => Promise<void>;
   /** Rejects with the reason if the save fails. */
   updateText: (changes: Record<string, string>) => Promise<void>;
+  /** Rejects with the reason if the save fails. */
+  updateImages: (changes: Record<string, string>) => Promise<void>;
 }
 
 const Ctx = createContext<DataValue | null>(null);
@@ -91,6 +97,7 @@ export function RestaurantDataProvider({
   const [items, setItems] = useState(initial.items);
   const [optionGroups, setOptionGroups] = useState(initial.optionGroups);
   const [text, setText] = useState(initial.text);
+  const [images, setImages] = useState(initial.images);
 
   // A server refresh (after any save) hands in fresh data; adopt it.
   const [seen, setSeen] = useState(initial);
@@ -101,6 +108,7 @@ export function RestaurantDataProvider({
     setItems(initial.items);
     setOptionGroups(initial.optionGroups);
     setText(initial.text);
+    setImages(initial.images);
   }
 
   const replaceItem = (item: MenuItem) =>
@@ -112,6 +120,7 @@ export function RestaurantDataProvider({
     items,
     optionGroups,
     text,
+    images,
 
     toggleAvailability: async (id) => {
       const before = items.find((i) => i.id === id);
@@ -219,6 +228,10 @@ export function RestaurantDataProvider({
 
     updateText: async (changes) => {
       setText(unwrap(await updateSiteText(changes)));
+    },
+
+    updateImages: async (changes) => {
+      setImages(unwrap(await updateSiteImages(changes)));
     },
   };
 

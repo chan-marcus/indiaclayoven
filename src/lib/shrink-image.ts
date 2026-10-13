@@ -1,4 +1,4 @@
-/** Longest side, in pixels, of a dish photo once resized. */
+/** Longest side, in pixels, of a dish photo once resized. Full-width banners pass more. */
 const MAX_SIDE = 1600;
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 
@@ -7,10 +7,10 @@ const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
  * becomes a few hundred KB. Falls back to the original file when the browser
  * can't read it, as long as it's already a web image.
  */
-export async function shrinkImage(file: File): Promise<Blob> {
+export async function shrinkImage(file: File, maxSide = MAX_SIDE): Promise<Blob> {
   try {
     const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);

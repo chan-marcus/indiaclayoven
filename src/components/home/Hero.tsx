@@ -1,16 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { IconArrowRight } from "@/components/ui/icons";
-import { getSiteText } from "@/lib/db";
+import { getSiteImages, getSiteText } from "@/lib/db";
+import { imageAlt } from "@/lib/site-images";
 import { Txt } from "@/components/ui/Txt";
 
 export async function Hero() {
-  const t = await getSiteText();
+  const [t, img] = await Promise.all([getSiteText(), getSiteImages()]);
   return (
     <section className="relative isolate flex min-h-[38rem] items-end overflow-hidden bg-clay-dark lg:min-h-[calc(100vh-5rem)] lg:max-h-[52rem]">
       <Image
-        src="/images/hero-naan-curry.jpg"
-        alt="Clay oven nan served alongside a slow-simmered curry"
+        src={img["home.hero"]}
+        alt={imageAlt("home.hero", img["home.hero"])}
+        data-image-key="home.hero"
         fill
         priority
         sizes="100vw"

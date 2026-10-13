@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { galleryImages } from "@/lib/gallery";
+import { imageAlt } from "@/lib/site-images";
 import { useRestaurantData } from "@/lib/restaurant-data";
 import { IconChevronLeft, IconChevronRight } from "@/components/ui/icons";
 import { Txt } from "@/components/ui/Txt";
@@ -12,7 +13,7 @@ import { Txt } from "@/components/ui/Txt";
  * and trackpad swiping behave natively; the arrows are a desktop affordance.
  */
 export function FoodGallery() {
-  const { text: t } = useRestaurantData();
+  const { text: t, images } = useRestaurantData();
   const railRef = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -91,8 +92,9 @@ export function FoodGallery() {
             }`}
           >
             <Image
-              src={g.src}
-              alt={g.alt}
+              src={images[`home.gallery.${i + 1}`] ?? g.src}
+              alt={imageAlt(`home.gallery.${i + 1}`, images[`home.gallery.${i + 1}`] ?? g.src)}
+              data-image-key={`home.gallery.${i + 1}`}
               fill
               sizes="(max-width: 768px) 60vw, 34rem"
               className="img-zoom object-cover"

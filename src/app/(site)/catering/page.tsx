@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/site/PageHeader";
 import { CateringForm } from "@/components/forms/CateringForm";
-import { getSiteText } from "@/lib/db";
+import { getSiteImages, getSiteText } from "@/lib/db";
+import { imageAlt } from "@/lib/site-images";
 import { Txt } from "@/components/ui/Txt";
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 const HIGHLIGHTS = [1, 2, 3] as const;
 
 export default async function CateringPage() {
-  const t = await getSiteText();
+  const [t, img] = await Promise.all([getSiteText(), getSiteImages()]);
   return (
     <>
       <PageHeader
@@ -21,8 +22,9 @@ export default async function CateringPage() {
         eyebrow={t["catering.header.eyebrow"]}
         title={t["catering.header.title"]}
         intro={t["catering.header.intro"]}
-        image="/images/clay-oven-platter.jpg"
-        alt="A platter of assorted clay oven meats"
+        image={img["catering.header"]}
+        imageKey="catering.header"
+        alt={imageAlt("catering.header", img["catering.header"])}
       />
 
       <section className="section">

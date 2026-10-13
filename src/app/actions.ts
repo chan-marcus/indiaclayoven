@@ -11,7 +11,8 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getMenuItems, getOptionGroups, getOrders, getRestaurant, getSiteText } from "@/lib/db";
+import { getMenuItems, getOptionGroups, getOrders, getRestaurant, getSiteImages, getSiteText } from "@/lib/db";
+import { DEFAULT_IMAGES, IMAGE_FIELD, type SiteImages } from "@/lib/site-images";
 import { DEFAULT_TEXT, TEXT_FIELD, type SiteText, type TextKey } from "@/lib/site-text";
 import { RESTAURANT_ID, RESTAURANT_TIME_ZONE } from "@/lib/restaurant";
 import {
@@ -940,3 +941,81 @@ export async function updateSiteText(changes: Record<string, string>): Promise<A
   });
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Website photos (owner)                                              */
+/* ------------------------------------------------------------------ */
+
+/** Where a website photo's uploads live in the bucket. */
+const siteImageFolder = (key: string) => `${RESTAURANT_ID}/site/${key}/`;
+
+/** Reads an uploaded photo, refusing anything that isn't a real image. */
+async function readPhoto(form: FormData) {
+  const file = form.get("photo");
+  if (!(file instanceof File) || file.size === 0) throw new InputError("Choose a photo to upload");
+  if (file.size > MAX_IMAGE_BYTES) throw new InputError("That photo is too large. Use one under 4 MB.");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = imageType(bytes);
+  if (!type) throw new InputError("Use a JPG, PNG or WebP photo");
+  return { bytes, type };
+}
+
+/**
+ * Uploads a replacement for one website photo and returns its address.
+ * Nothing changes on the website until it's saved with updateSiteImages.
+ */
+export async function uploadSiteImage(key: string, form: FormData): Promise<ActionResult<string>> {
+  return run(async () => {
+    if (!IMAGE_FIELD.has(key)) throw new InputError("Unknown photo");
+    const { bytes, type } = await readPhoto(form);
+    const path = `${siteImageFolder(key)}${crypto.randomUUID()}.${type.ext}`;
+    const { error } = await supabase.storage
+      .from(IMAGE_BUCKET)
+      .upload(path, bytes, { contentType: type.mime, cacheControl: "31536000", upsert: false });
+    if (error) throw new Error(`Could not upload the photo: ${error.message}`);
+    return supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path).data.publicUrl;
+  });
+}
+
+/**
+ * Saves replaced website photos. A photo set back to its original has its
+ * replacement removed. Uploads that are no longer used are deleted.
+ */
+export async function updateSiteImages(changes: Record<string, string>): Promise<ActionResult<SiteImages>> {
+  return run(async () => {
+    const save: { restaurant_id: string; key: string; url: string; updated_at: string }[] = [];
+    const reset: string[] = [];
+    for (const [key, url] of Object.entries(changes ?? {})) {
+      if (!IMAGE_FIELD.has(key)) throw new InputError("Unknown photo");
+      if (typeof url !== "string") throw new InputError("Invalid photo");
+      if (!url || url === DEFAULT_IMAGES[key]) {
+        reset.push(key);
+        continue;
+      }
+      // Only photos uploaded for this spot are accepted.
+      if (uploadedPath(url)?.startsWith(siteImageFolder(key)) !== true) throw new InputError("Invalid photo");
+      save.push({ restaurant_id: RESTAURANT_ID, key, url, updated_at: new Date().toISOString() });
+    }
+
+    if (save.length) check(await supabase.from("site_images").upsert(save), "save the photos");
+    if (reset.length) {
+      check(
+        await supabase.from("site_images").delete().eq("restaurant_id", RESTAURANT_ID).in("key", reset),
+        "save the photos",
+      );
+    }
+
+    // Tidy up: uploads for these spots that aren't the photo in use now.
+    const current = await getSiteImages();
+    for (const key of Object.keys(changes ?? {})) {
+      const folder = siteImageFolder(key);
+      const { data } = await supabase.storage.from(IMAGE_BUCKET).list(folder.slice(0, -1), { limit: 100 });
+      const keep = uploadedPath(current[key]);
+      const stale = (data ?? []).map((f) => `${folder}${f.name}`).filter((p) => p !== keep);
+      if (stale.length) await supabase.storage.from(IMAGE_BUCKET).remove(stale);
+    }
+
+    refreshSite();
+    return current;
+  });
+}

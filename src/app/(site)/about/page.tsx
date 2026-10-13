@@ -3,7 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/site/PageHeader";
 import { fullAddress, mapsUrl, telHref } from "@/lib/restaurant";
-import { getRestaurant, getSiteText } from "@/lib/db";
+import { getRestaurant, getSiteImages, getSiteText } from "@/lib/db";
+import { imageAlt } from "@/lib/site-images";
 import { Txt } from "@/components/ui/Txt";
 import { IconArrowRight } from "@/components/ui/icons";
 
@@ -14,15 +15,16 @@ export const metadata: Metadata = {
 };
 
 export default async function AboutPage() {
-  const [restaurant, t] = await Promise.all([getRestaurant(), getSiteText()]);
+  const [restaurant, t, img] = await Promise.all([getRestaurant(), getSiteText(), getSiteImages()]);
   return (
     <>
       <PageHeader
         k="about.header"
         eyebrow={t["about.header.eyebrow"]}
         title={t["about.header.title"]}
-        image="/images/restaurant-interior.jpg"
-        alt="The dining room at India Clay Oven"
+        image={img["about.header"]}
+        imageKey="about.header"
+        alt={imageAlt("about.header", img["about.header"])}
       />
 
       {/* Story */}
@@ -52,8 +54,9 @@ export default async function AboutPage() {
       {/* Full-bleed photograph */}
       <section className="relative h-[22rem] md:h-[32rem]">
         <Image
-          src="/images/tandoor-fire.jpg"
-          alt="Bread baking against the wall of the charcoal tandoor"
+          src={img["about.wide"]}
+          alt={imageAlt("about.wide", img["about.wide"])}
+          data-image-key="about.wide"
           fill
           sizes="100vw"
           className="object-cover"
@@ -106,8 +109,9 @@ export default async function AboutPage() {
         <div className="container-page grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
           <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-cream-200">
             <Image
-              src="/images/dining-service.jpg"
-              alt="A table being served in the dining room"
+              src={img["about.visit"]}
+              alt={imageAlt("about.visit", img["about.visit"])}
+              data-image-key="about.visit"
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"

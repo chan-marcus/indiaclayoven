@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { mapsUrl, mapsEmbedUrl, telHref } from "@/lib/restaurant";
-import { getRestaurant, getSiteText } from "@/lib/db";
+import { getRestaurant, getSiteImages, getSiteText } from "@/lib/db";
 import { fillText } from "@/lib/site-text";
 import { Txt } from "@/components/ui/Txt";
 import { IconArrowRight } from "@/components/ui/icons";
@@ -81,11 +81,12 @@ export async function FindUs() {
 }
 
 export async function ClosingCta() {
-  const [restaurant, t] = await Promise.all([getRestaurant(), getSiteText()]);
+  const [restaurant, t, img] = await Promise.all([getRestaurant(), getSiteText(), getSiteImages()]);
   return (
     <section className="relative isolate overflow-hidden bg-clay">
       <Image
-        src="/images/tandoori-closeup.jpg"
+        src={img["home.closing"]}
+        data-image-key="home.closing"
         alt=""
         fill
         sizes="100vw"
