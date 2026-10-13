@@ -4,7 +4,9 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { reportFailure, useRestaurantData } from "@/lib/restaurant-data";
 import { DEFAULT_TEXT, SITE_TEXT, type TextKey } from "@/lib/site-text";
-import { DEFAULT_IMAGES, SITE_IMAGES } from "@/lib/site-images";
+import { DEFAULT_IMAGES, IMAGE_FIELD, SITE_IMAGES, isDefaultPhoto, type SitePhoto } from "@/lib/site-images";
+import { autoFocus, isLowRes } from "@/lib/photo-fit";
+import { PhotoFraming } from "@/components/dashboard/PhotoFraming";
 import { uploadSiteImage } from "@/app/actions";
 import { unwrap } from "@/lib/action-result";
 import { shrinkImage } from "@/lib/shrink-image";
@@ -20,7 +22,11 @@ export default function EditWebsitePage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [draft, setDraft] = useState<Partial<Record<TextKey, string>>>({});
   /** Photo key → a new photo (already uploaded, not saved), or the original to reset to. */
-  const [imageDraft, setImageDraft] = useState<Record<string, string>>({});
+  const [imageDraft, setImageDraft] = useState<Record<string, SitePhoto>>({});
+  /** Photos just uploaded that are small for their spot. */
+  const [smallPhotos, setSmallPhotos] = useState<Record<string, boolean>>({});
+  /** The photo open in the Adjust window. */
+  const [framing, setFraming] = useState<string | null>(null);
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [imageErrors, setImageErrors] = useState<Record<string, string>>({});
   /** The text field or photo being edited, outlined in the preview. */
@@ -34,7 +40,9 @@ export default function EditWebsitePage() {
   const page = SITE_TEXT[pageIndex];
   const value = (key: TextKey) => draft[key] ?? text[key];
   const unsavedText = (Object.entries(draft) as [TextKey, string][]).filter(([k, v]) => v !== text[k]);
-  const unsavedImages = Object.entries(imageDraft).filter(([k, v]) => v !== images[k]);
+  const samePhoto = (a: SitePhoto | undefined, b: SitePhoto | undefined) =>
+    a?.src === b?.src && (a?.focus ?? "50% 50%") === (b?.focus ?? "50% 50%");
+  const unsavedImages = Object.entries(imageDraft).filter(([k, v]) => !samePhoto(v, images[k]));
   const unsavedCount = unsavedText.length + unsavedImages.length;
   const imageValue = (key: string) => imageDraft[key] ?? images[key];
 
@@ -43,9 +51,9 @@ export default function EditWebsitePage() {
     setDraft((d) => ({ ...d, [key]: v }));
   };
 
-  const setImage = (key: string, url: string) => {
+  const setImage = (key: string, photo: SitePhoto) => {
     setSaved(false);
-    setImageDraft((d) => ({ ...d, [key]: url }));
+    setImageDraft((d) => ({ ...d, [key]: photo }));
   };
 
   /** Shrinks and uploads a photo; it shows in the preview and goes live on Save. */
@@ -57,9 +65,15 @@ export default function EditWebsitePage() {
     setImageErrors((x) => ({ ...x, [key]: "" }));
     setUploading((u) => ({ ...u, [key]: true }));
     try {
+      const small = await shrinkImage(file, 2400);
+      // Keep the busiest, most colourful part (usually the food) in frame,
+      // and flag photos too small for their spot.
+      const fit = await autoFocus(small).catch(() => null);
       const form = new FormData();
-      form.append("photo", await shrinkImage(file, 2400), "photo");
-      setImage(key, unwrap(await uploadSiteImage(key, form)));
+      form.append("photo", small, "photo");
+      setImage(key, { src: unwrap(await uploadSiteImage(key, form)), focus: fit?.focus });
+      const shapes = IMAGE_FIELD.get(key)?.shapes ?? [];
+      setSmallPhotos((x) => ({ ...x, [key]: Boolean(fit && isLowRes(fit.width, fit.height, shapes)) }));
     } catch (err) {
       setImageErrors((x) => ({ ...x, [key]: err instanceof Error ? err.message : String(err) }));
     } finally {
@@ -184,7 +198,7 @@ export default function EditWebsitePage() {
         {SITE_TEXT.map((p, i) => {
           const pending =
             p.sections.some((s) => s.fields.some((f) => f.key in draft && draft[f.key] !== text[f.key])) ||
-            SITE_IMAGES.some((im) => im.page === p.page && im.key in imageDraft && imageDraft[im.key] !== images[im.key]);
+            SITE_IMAGES.some((im) => im.page === p.page && im.key in imageDraft && !samePhoto(imageDraft[im.key], images[im.key]));
           return (
             <button
               key={p.page}
@@ -233,7 +247,15 @@ export default function EditWebsitePage() {
                 uploading={uploading}
                 errors={imageErrors}
                 onPick={pickImage}
-                onReset={(key) => setImage(key, DEFAULT_IMAGES[key])}
+                small={smallPhotos}
+                onReset={(key) => {
+                  setImage(key, DEFAULT_IMAGES[key]);
+                  setSmallPhotos((x) => ({ ...x, [key]: false }));
+                }}
+                onAdjust={(key) => {
+                  setFocused(key);
+                  setFraming(key);
+                }}
                 onFocus={setFocused}
               />
               <div className="mt-5 space-y-5">
@@ -339,6 +361,16 @@ export default function EditWebsitePage() {
         </div>
       </div>
 
+      {framing && (
+        <PhotoFraming
+          src={imageValue(framing).src}
+          focus={imageValue(framing).focus}
+          shapes={IMAGE_FIELD.get(framing)?.shapes ?? []}
+          onChange={(focus) => setImage(framing, { ...imageValue(framing), focus })}
+          onClose={() => setFraming(null)}
+        />
+      )}
+
       {confirmDiscard && (
         <ConfirmDialog
           title={`Discard ${unsavedCount} unsaved ${unsavedCount === 1 ? "change" : "changes"}?`}
@@ -368,23 +400,27 @@ function SectionPhotos({
   value,
   uploading,
   errors,
+  small,
   onPick,
   onReset,
+  onAdjust,
   onFocus,
 }: {
   photos: readonly { key: string; section: string; label: string }[];
-  value: (key: string) => string;
+  value: (key: string) => SitePhoto;
   uploading: Record<string, boolean>;
   errors: Record<string, string>;
+  small: Record<string, boolean>;
   onPick: (key: string, e: React.ChangeEvent<HTMLInputElement>) => void;
   onReset: (key: string) => void;
+  onAdjust: (key: string) => void;
   onFocus: (key: string) => void;
 }) {
   if (photos.length === 0) return null;
   return (
     <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3">
       {photos.map((p) => {
-        const src = value(p.key);
+        const photo = value(p.key);
         const busy = uploading[p.key];
         return (
           <div key={p.key} className="min-w-0">
@@ -394,7 +430,14 @@ function SectionPhotos({
               aria-label={`Show ${p.section}, ${p.label} in the preview`}
               className="relative block aspect-[4/3] w-full overflow-hidden rounded-sm bg-cream-200"
             >
-              <Image src={src} alt="" fill sizes="160px" className="object-cover" />
+              <Image
+                src={photo.src}
+                alt=""
+                fill
+                sizes="160px"
+                className="object-cover"
+                style={{ objectPosition: photo.focus }}
+              />
               {busy && (
                 <span className="absolute inset-0 flex items-center justify-center bg-ink/45 text-xs text-cream">
                   Uploading…
@@ -402,7 +445,7 @@ function SectionPhotos({
               )}
             </button>
             <p className="mt-1.5 truncate text-xs text-ink-500">{p.label}</p>
-            <div className="mt-0.5 flex gap-3 text-[0.8125rem]">
+            <div className="mt-0.5 flex flex-wrap gap-x-3 text-[0.8125rem]">
               <label className="cursor-pointer text-ink-700 underline-offset-4 hover:text-ink hover:underline has-focus-visible:underline">
                 <input
                   type="file"
@@ -413,7 +456,14 @@ function SectionPhotos({
                 />
                 Change
               </label>
-              {src !== DEFAULT_IMAGES[p.key] && (
+              <button
+                type="button"
+                onClick={() => onAdjust(p.key)}
+                className="text-ink-700 underline-offset-4 hover:text-ink hover:underline"
+              >
+                Adjust
+              </button>
+              {!isDefaultPhoto(p.key, photo) && (
                 <button
                   type="button"
                   onClick={() => onReset(p.key)}
@@ -423,6 +473,9 @@ function SectionPhotos({
                 </button>
               )}
             </div>
+            {small[p.key] && !errors[p.key] && (
+              <p className="mt-1 text-xs text-gold">May look blurry</p>
+            )}
             {errors[p.key] && (
               <p role="alert" className="mt-1 text-xs text-danger">
                 {errors[p.key]}

@@ -44,6 +44,7 @@ export type MenuItemRow = {
   description: string | null;
   price: number;
   image: string | null;
+  image_focus?: string | null;
   available: boolean;
   badges: BadgeKind[];
   signature: boolean;
@@ -141,6 +142,7 @@ export const menuItemFromRow = (r: MenuItemWithGroupsRow): MenuItem => ({
   description: r.description ?? undefined,
   price: Number(r.price),
   image: r.image ?? undefined,
+  imageFocus: r.image_focus ?? undefined,
   available: r.available,
   badges: r.badges,
   signature: r.signature || undefined,
@@ -161,6 +163,7 @@ export const menuItemToRow = (i: MenuItem): MenuItemRow => ({
   description: i.description ?? null,
   price: i.price,
   image: i.image ?? null,
+  image_focus: i.imageFocus ?? null,
   available: i.available,
   badges: i.badges,
   signature: i.signature ?? false,

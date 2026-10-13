@@ -11,8 +11,11 @@ export function DishImage({
   sizes,
   className = "object-cover",
   markClassName = "h-1/2 w-1/2",
+  focus,
 }: {
   src?: string;
+  /** What to keep in frame when the photo is cropped ("50% 35%"). */
+  focus?: string;
   alt: string;
   sizes: string;
   className?: string;
@@ -25,5 +28,5 @@ export function DishImage({
       </div>
     );
   }
-  return <Image src={src} alt={alt} fill sizes={sizes} className={className} />;
+  return <Image src={src} alt={alt} fill sizes={sizes} className={className} style={{ objectPosition: focus }} />;
 }

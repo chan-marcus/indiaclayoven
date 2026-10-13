@@ -77,7 +77,9 @@ export const getSiteText = cache(async () => {
 
 /** Website photos: defaults with the owner's replacements from Dashboard → Edit Website. */
 export const getSiteImages = cache(async () => {
-  const res = await supabase.from("site_images").select("key, url").eq("restaurant_id", RESTAURANT_ID);
-  const saved = rows<{ key: string; url: string }[]>(res, "website photos");
-  return mergeImages(Object.fromEntries(saved.map((r) => [r.key, r.url])));
+  const res = await supabase.from("site_images").select("key, url, focus").eq("restaurant_id", RESTAURANT_ID);
+  const saved = rows<{ key: string; url: string; focus: string | null }[]>(res, "website photos");
+  return mergeImages(
+    Object.fromEntries(saved.map((r) => [r.key, { src: r.url, focus: r.focus ?? undefined }])),
+  );
 });

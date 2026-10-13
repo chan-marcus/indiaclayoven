@@ -12,7 +12,8 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { getMenuItems, getOptionGroups, getOrders, getRestaurant, getSiteImages, getSiteText } from "@/lib/db";
-import { DEFAULT_IMAGES, IMAGE_FIELD, type SiteImages } from "@/lib/site-images";
+import { DEFAULT_IMAGES, IMAGE_FIELD, isDefaultPhoto, type SiteImages, type SitePhoto } from "@/lib/site-images";
+import { CENTER, isFocus } from "@/lib/photo-fit";
 import { DEFAULT_TEXT, TEXT_FIELD, type SiteText, type TextKey } from "@/lib/site-text";
 import { RESTAURANT_ID, RESTAURANT_TIME_ZONE } from "@/lib/restaurant";
 import {
@@ -127,7 +128,7 @@ export async function setItemAvailability(id: string, available: boolean): Promi
 
 type ItemInput = Pick<
   MenuItem,
-  "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds" | "choicePrices"
+  "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds" | "choicePrices" | "imageFocus"
 >;
 
 type GroupRef = { id: string; name: string; options: string[]; sets_price: boolean };
@@ -226,6 +227,12 @@ export async function updateMenuItem(id: string, patch: Partial<ItemInput>): Pro
     if ("price" in patch) update.price = money(patch.price, "Price");
     if ("categoryId" in patch) update.category_id = text(patch.categoryId, "Category");
     if ("available" in patch) update.available = Boolean(patch.available);
+    if ("imageFocus" in patch) {
+      if (patch.imageFocus !== undefined && patch.imageFocus !== null && !isFocus(patch.imageFocus)) {
+        throw new InputError("Invalid photo framing");
+      }
+      update.image_focus = patch.imageFocus && patch.imageFocus !== CENTER ? patch.imageFocus : null;
+    }
     const groups = "optionGroupIds" in patch ? await ownGroups(patch.optionGroupIds) : null;
 
     // Also confirms the dish belongs to this restaurant before its options change.
@@ -256,7 +263,8 @@ export async function updateMenuItem(id: string, patch: Partial<ItemInput>): Pro
 }
 
 export async function createMenuItem(
-  input: Omit<ItemInput, "optionGroupIds" | "choicePrices"> & {
+  input: Omit<ItemInput, "optionGroupIds" | "choicePrices" | "imageFocus"> & {
+    imageFocus?: string;
     optionGroupIds?: string[];
     choicePrices?: MenuItem["choicePrices"];
     image?: string;
@@ -288,6 +296,7 @@ export async function createMenuItem(
           description: optionalText(input.description, "Description"),
           price,
           image: input.image?.startsWith("/images/") ? input.image : null,
+          image_focus: isFocus(input.imageFocus) && input.imageFocus !== CENTER ? input.imageFocus : null,
           available: input.available ?? true,
           badges: [],
           signature: false,
@@ -369,7 +378,11 @@ export async function removeMenuItemImage(id: string): Promise<ActionResult<Menu
       "find the dish",
     );
     check(
-      await supabase.from("menu_items").update({ image: null }).eq("id", itemId).eq("restaurant_id", RESTAURANT_ID),
+      await supabase
+        .from("menu_items")
+        .update({ image: null, image_focus: null })
+        .eq("id", itemId)
+        .eq("restaurant_id", RESTAURANT_ID),
       "remove the photo",
     );
     const old = uploadedPath(current.image);
@@ -978,23 +991,32 @@ export async function uploadSiteImage(key: string, form: FormData): Promise<Acti
 }
 
 /**
- * Saves replaced website photos. A photo set back to its original has its
- * replacement removed. Uploads that are no longer used are deleted.
+ * Saves replaced or reframed website photos. A photo back to its original,
+ * centred, has its row removed. Uploads that are no longer used are deleted.
  */
-export async function updateSiteImages(changes: Record<string, string>): Promise<ActionResult<SiteImages>> {
+export async function updateSiteImages(changes: Record<string, SitePhoto>): Promise<ActionResult<SiteImages>> {
   return run(async () => {
-    const save: { restaurant_id: string; key: string; url: string; updated_at: string }[] = [];
+    const save: { restaurant_id: string; key: string; url: string; focus: string | null; updated_at: string }[] = [];
     const reset: string[] = [];
-    for (const [key, url] of Object.entries(changes ?? {})) {
+    for (const [key, photo] of Object.entries(changes ?? {})) {
       if (!IMAGE_FIELD.has(key)) throw new InputError("Unknown photo");
-      if (typeof url !== "string") throw new InputError("Invalid photo");
-      if (!url || url === DEFAULT_IMAGES[key]) {
+      const url = photo?.src;
+      if (typeof url !== "string" || !url) throw new InputError("Invalid photo");
+      if (photo.focus !== undefined && !isFocus(photo.focus)) throw new InputError("Invalid photo framing");
+      if (isDefaultPhoto(key, photo)) {
         reset.push(key);
         continue;
       }
-      // Only photos uploaded for this spot are accepted.
-      if (uploadedPath(url)?.startsWith(siteImageFolder(key)) !== true) throw new InputError("Invalid photo");
-      save.push({ restaurant_id: RESTAURANT_ID, key, url, updated_at: new Date().toISOString() });
+      // The original photo (reframed), or one uploaded for this spot.
+      const ownUpload = uploadedPath(url)?.startsWith(siteImageFolder(key)) === true;
+      if (url !== DEFAULT_IMAGES[key].src && !ownUpload) throw new InputError("Invalid photo");
+      save.push({
+        restaurant_id: RESTAURANT_ID,
+        key,
+        url,
+        focus: photo.focus && photo.focus !== CENTER ? photo.focus : null,
+        updated_at: new Date().toISOString(),
+      });
     }
 
     if (save.length) check(await supabase.from("site_images").upsert(save), "save the photos");
@@ -1005,12 +1027,14 @@ export async function updateSiteImages(changes: Record<string, string>): Promise
       );
     }
 
-    // Tidy up: uploads for these spots that aren't the photo in use now.
+    // Tidy up: any upload that isn't a photo in use now, including ones
+    // uploaded and then discarded before saving.
     const current = await getSiteImages();
-    for (const key of Object.keys(changes ?? {})) {
+    const { data: folders } = await supabase.storage.from(IMAGE_BUCKET).list(`${RESTAURANT_ID}/site`, { limit: 100 });
+    for (const { name: key } of folders ?? []) {
       const folder = siteImageFolder(key);
       const { data } = await supabase.storage.from(IMAGE_BUCKET).list(folder.slice(0, -1), { limit: 100 });
-      const keep = uploadedPath(current[key]);
+      const keep = current[key] ? uploadedPath(current[key].src) : null;
       const stale = (data ?? []).map((f) => `${folder}${f.name}`).filter((p) => p !== keep);
       if (stale.length) await supabase.storage.from(IMAGE_BUCKET).remove(stale);
     }

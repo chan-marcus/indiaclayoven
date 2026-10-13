@@ -104,6 +104,7 @@ export function ItemDetailModal({
           <div className="relative h-52 w-full shrink-0 bg-cream-200 sm:h-auto sm:w-[45%]">
             <Image
               src={item.image}
+              style={{ objectPosition: item.imageFocus }}
               alt={item.name}
               fill
               sizes="(max-width: 640px) 100vw, 45vw"

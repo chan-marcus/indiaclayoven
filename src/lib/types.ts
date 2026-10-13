@@ -64,6 +64,8 @@ export interface MenuItem {
   price: number;
   /** Absent when the dish has no photo. */
   image?: string;
+  /** What to keep in frame when the photo is cropped ("50% 35%"); centre when absent. */
+  imageFocus?: string;
   available: boolean;
   badges: BadgeKind[];
   /** Surfaced in the Signature Dishes section on the homepage. */
@@ -116,6 +118,7 @@ export interface CartLine {
   name: string;
   price: number;
   image?: string;
+  imageFocus?: string;
   quantity: number;
   choices?: Choice[];
   notes?: string;

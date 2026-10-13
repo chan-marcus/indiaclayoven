@@ -92,8 +92,9 @@ export function FoodGallery() {
             }`}
           >
             <Image
-              src={images[`home.gallery.${i + 1}`] ?? g.src}
-              alt={imageAlt(`home.gallery.${i + 1}`, images[`home.gallery.${i + 1}`] ?? g.src)}
+              src={images[`home.gallery.${i + 1}`]?.src ?? g.src}
+              alt={imageAlt(`home.gallery.${i + 1}`, images[`home.gallery.${i + 1}`]?.src ?? g.src)}
+              style={{ objectPosition: images[`home.gallery.${i + 1}`]?.focus }}
               data-image-key={`home.gallery.${i + 1}`}
               fill
               sizes="(max-width: 768px) 60vw, 34rem"

@@ -393,7 +393,7 @@ export function CheckoutForm() {
               {lines.map((l) => (
                 <li key={l.lineId} className="flex gap-3 py-3.5">
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-sm bg-cream-100">
-                    <DishImage src={l.image} alt="" sizes="48px" />
+                    <DishImage src={l.image} focus={l.imageFocus} alt="" sizes="48px" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm leading-snug font-medium">

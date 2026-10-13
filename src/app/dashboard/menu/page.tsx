@@ -6,6 +6,8 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
 import { reportFailure } from "@/lib/restaurant-data";
 import { shrinkImage } from "@/lib/shrink-image";
+import { autoFocus, DISH_SHAPES, isLowRes } from "@/lib/photo-fit";
+import { PhotoFraming } from "@/components/dashboard/PhotoFraming";
 import { addOnLabel, choicesSummary, fromPrice, hasPricedChoices } from "@/lib/pricing";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { currency } from "@/lib/format";
@@ -289,7 +291,7 @@ export default function MenuManagerPage() {
                           title="Change photo"
                           className="relative h-11 w-11 shrink-0 overflow-hidden rounded-sm bg-cream-100 transition-opacity hover:opacity-80"
                         >
-                          <DishImage src={item.image} alt="" sizes="44px" />
+                          <DishImage src={item.image} focus={item.imageFocus} alt="" sizes="44px" />
                         </button>
 
                         <div className="min-w-0 flex-1">
@@ -415,6 +417,7 @@ export default function MenuManagerPage() {
                 available: patch.available ?? true,
                 optionGroupIds: patch.optionGroupIds ?? [],
                 choicePrices: patch.choicePrices ?? {},
+                imageFocus: patch.imageFocus,
               });
               if (created && photo instanceof Blob) await uploadItemImage(created.id, photo);
             }
@@ -1035,10 +1038,18 @@ function ItemEditor({
   const [removePhoto, setRemovePhoto] = useState(false);
   const hasPhoto = Boolean(photoUrl || (item?.image && !removePhoto));
 
+  /** New framing for the photo; null keeps the saved one. */
+  const [focusDraft, setFocusDraft] = useState<string | null>(null);
+  const photoFocus = focusDraft ?? item?.imageFocus;
+  const [smallPhoto, setSmallPhoto] = useState(false);
+  const [framing, setFraming] = useState(false);
+
   const dropPhoto = () => {
     setPhoto(null);
     setPhotoUrl(null);
     setPhotoError("");
+    setFocusDraft(null);
+    setSmallPhoto(false);
     if (item?.image) setRemovePhoto(true);
   };
   const [photoError, setPhotoError] = useState("");
@@ -1057,6 +1068,10 @@ function ItemEditor({
     try {
       const small = await shrinkImage(file);
       if (small.size > 4 * 1024 * 1024) throw new Error("That photo is too large. Use one under 4 MB.");
+      // Keep the food in frame, and flag photos too small to look sharp.
+      const fit = await autoFocus(small).catch(() => null);
+      setFocusDraft(fit?.focus ?? "50% 50%");
+      setSmallPhoto(Boolean(fit && isLowRes(fit.width, fit.height, DISH_SHAPES)));
       setPhoto(small);
       setPhotoUrl(URL.createObjectURL(small));
       setRemovePhoto(false);
@@ -1109,6 +1124,7 @@ function ItemEditor({
       available: form.available,
       ...(pickedGroupIds && { optionGroupIds: pickedGroupIds }),
       ...(size && sizes && { choicePrices: { [size.id]: sizes } }),
+      ...(focusDraft !== null && { imageFocus: focusDraft }),
     }, photo ?? (removePhoto ? "remove" : null));
   };
 
@@ -1137,17 +1153,34 @@ function ItemEditor({
             <div className="flex items-center gap-4">
               <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-sm bg-cream-200">
                 {photoUrl ? (
-                  <Image src={photoUrl} alt="" fill sizes="96px" unoptimized className="object-cover" />
+                  <Image
+                    src={photoUrl}
+                    alt=""
+                    fill
+                    sizes="96px"
+                    unoptimized
+                    className="object-cover"
+                    style={{ objectPosition: photoFocus }}
+                  />
                 ) : (
-                  <DishImage src={removePhoto ? undefined : item?.image} alt="" sizes="96px" />
+                  <DishImage src={removePhoto ? undefined : item?.image} focus={photoFocus} alt="" sizes="96px" />
                 )}
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <label className="btn btn-secondary btn-sm cursor-pointer has-focus-visible:ring-2 has-focus-visible:ring-gold">
                     <input type="file" accept="image/*" onChange={pickPhoto} className="sr-only" />
                     {preparing ? "Preparing…" : hasPhoto ? "Change photo" : "Upload photo"}
                   </label>
+                  {hasPhoto && (
+                    <button
+                      type="button"
+                      onClick={() => setFraming(true)}
+                      className="text-[0.8125rem] text-ink-700 underline-offset-4 hover:text-ink hover:underline"
+                    >
+                      Adjust
+                    </button>
+                  )}
                   {hasPhoto && (
                     <button
                       type="button"
@@ -1165,12 +1198,22 @@ function ItemEditor({
                       ? "Removed when you save."
                       : "JPG or PNG, any size."}
                 </p>
+                {smallPhoto && <p className="mt-1 text-xs text-gold">Small photo, may look blurry.</p>}
               </div>
             </div>
             {photoError && (
               <p role="alert" className="mt-2 text-[0.8125rem] text-danger">
                 {photoError}
               </p>
+            )}
+            {framing && (photoUrl || item?.image) && (
+              <PhotoFraming
+                src={(photoUrl ?? item?.image)!}
+                focus={photoFocus}
+                shapes={DISH_SHAPES}
+                onChange={setFocusDraft}
+                onClose={() => setFraming(false)}
+              />
             )}
           </div>
           <div>

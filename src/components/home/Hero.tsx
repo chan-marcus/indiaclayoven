@@ -10,8 +10,9 @@ export async function Hero() {
   return (
     <section className="relative isolate flex min-h-[38rem] items-end overflow-hidden bg-clay-dark lg:min-h-[calc(100vh-5rem)] lg:max-h-[52rem]">
       <Image
-        src={img["home.hero"]}
-        alt={imageAlt("home.hero", img["home.hero"])}
+        src={img["home.hero"].src}
+        alt={imageAlt("home.hero", img["home.hero"].src)}
+        style={{ objectPosition: img["home.hero"].focus }}
         data-image-key="home.hero"
         fill
         priority

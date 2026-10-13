@@ -47,6 +47,7 @@ export async function SignatureDishes() {
               <div className="relative aspect-[4/5] overflow-hidden rounded-sm bg-cream-200">
                 <DishImage
                   src={dish.image}
+                  focus={dish.imageFocus}
                   alt={dish.name}
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                   className="img-zoom object-cover"

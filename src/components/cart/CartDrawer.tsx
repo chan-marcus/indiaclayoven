@@ -75,7 +75,7 @@ export function CartDrawer() {
               {lines.map((line) => (
                 <li key={line.lineId} className="flex gap-3.5 py-4">
                   <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-sm bg-cream-100">
-                    <DishImage src={line.image} alt="" sizes="64px" />
+                    <DishImage src={line.image} focus={line.imageFocus} alt="" sizes="64px" />
                   </div>
 
                   <div className="min-w-0 flex-1">

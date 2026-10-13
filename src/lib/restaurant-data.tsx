@@ -3,7 +3,7 @@
 import { createContext, useContext, useState } from "react";
 import type { Category, MenuItem, OptionGroup, Restaurant } from "@/lib/types";
 import type { SiteText } from "@/lib/site-text";
-import type { SiteImages } from "@/lib/site-images";
+import type { SiteImages, SitePhoto } from "@/lib/site-images";
 import {
   createCategory,
   createMenuItem,
@@ -48,7 +48,7 @@ export type PublicData = {
 
 type ItemInput = Pick<
   MenuItem,
-  "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds" | "choicePrices"
+  "name" | "description" | "price" | "categoryId" | "available" | "optionGroupIds" | "choicePrices" | "imageFocus"
 >;
 type GroupInput = Pick<OptionGroup, "name" | "options" | "prices" | "setsPrice">;
 type SettingsInput = Parameters<typeof updateRestaurant>[0];
@@ -74,7 +74,7 @@ interface DataValue extends PublicData {
   /** Rejects with the reason if the save fails. */
   updateText: (changes: Record<string, string>) => Promise<void>;
   /** Rejects with the reason if the save fails. */
-  updateImages: (changes: Record<string, string>) => Promise<void>;
+  updateImages: (changes: Record<string, SitePhoto>) => Promise<void>;
 }
 
 const Ctx = createContext<DataValue | null>(null);

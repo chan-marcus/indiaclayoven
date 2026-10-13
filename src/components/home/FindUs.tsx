@@ -85,7 +85,8 @@ export async function ClosingCta() {
   return (
     <section className="relative isolate overflow-hidden bg-clay">
       <Image
-        src={img["home.closing"]}
+        src={img["home.closing"].src}
+        style={{ objectPosition: img["home.closing"].focus }}
         data-image-key="home.closing"
         alt=""
         fill

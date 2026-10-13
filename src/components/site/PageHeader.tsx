@@ -15,6 +15,7 @@ export function PageHeader({
   alt = "",
   k,
   imageKey,
+  imageFocus,
 }: {
   eyebrow: string;
   title: string;
@@ -25,13 +26,24 @@ export function PageHeader({
   k?: string;
   /** Website-photo key, for the Edit Website preview. */
   imageKey?: string;
+  /** What to keep in frame when the photo is cropped. */
+  imageFocus?: string;
 }) {
   const tag = (part: string, text: string) =>
     k ? <Txt k={`${k}.${part}` as TextKey} text={text} /> : <Lines text={text} />;
   if (image) {
     return (
       <section className="relative isolate flex min-h-[24rem] items-end overflow-hidden bg-clay-dark md:min-h-[32rem]">
-        <Image src={image} alt={alt} fill priority sizes="100vw" className="object-cover" data-image-key={imageKey} />
+        <Image
+          src={image}
+          alt={alt}
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+          style={{ objectPosition: imageFocus }}
+          data-image-key={imageKey}
+        />
         <div
           className="absolute inset-0 bg-gradient-to-t from-clay-dark/92 via-clay-dark/50 to-clay-dark/20"
           aria-hidden

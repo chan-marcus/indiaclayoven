@@ -178,7 +178,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const byId = new Map(items.map((i) => [i.id, i]));
     return state.lines.map((l) => {
       const live = byId.get(l.itemId);
-      return live ? { ...l, price: unitPrice(live, l.choices, optionGroups), image: live.image } : l;
+      return live
+        ? { ...l, price: unitPrice(live, l.choices, optionGroups), image: live.image, imageFocus: live.imageFocus }
+        : l;
     });
   }, [state.lines, items, optionGroups]);
 

@@ -22,9 +22,10 @@ export default async function AboutPage() {
         k="about.header"
         eyebrow={t["about.header.eyebrow"]}
         title={t["about.header.title"]}
-        image={img["about.header"]}
+        image={img["about.header"].src}
+        imageFocus={img["about.header"].focus}
         imageKey="about.header"
-        alt={imageAlt("about.header", img["about.header"])}
+        alt={imageAlt("about.header", img["about.header"].src)}
       />
 
       {/* Story */}
@@ -54,8 +55,9 @@ export default async function AboutPage() {
       {/* Full-bleed photograph */}
       <section className="relative h-[22rem] md:h-[32rem]">
         <Image
-          src={img["about.wide"]}
-          alt={imageAlt("about.wide", img["about.wide"])}
+          src={img["about.wide"].src}
+          alt={imageAlt("about.wide", img["about.wide"].src)}
+          style={{ objectPosition: img["about.wide"].focus }}
           data-image-key="about.wide"
           fill
           sizes="100vw"
@@ -109,8 +111,9 @@ export default async function AboutPage() {
         <div className="container-page grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
           <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-cream-200">
             <Image
-              src={img["about.visit"]}
-              alt={imageAlt("about.visit", img["about.visit"])}
+              src={img["about.visit"].src}
+              alt={imageAlt("about.visit", img["about.visit"].src)}
+              style={{ objectPosition: img["about.visit"].focus }}
               data-image-key="about.visit"
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"

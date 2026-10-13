@@ -12,8 +12,8 @@ import { useEffect } from "react";
 type PreviewMessage = {
   type: "ico-preview";
   texts: Record<string, string>;
-  /** Website photo key → the photo to show (saved, or a new upload not saved yet). */
-  images?: Record<string, string>;
+  /** Website photo key → the photo to show (saved, or not saved yet) and its framing. */
+  images?: Record<string, { src: string; focus?: string }>;
   vars: { phone: string; cuisine: string };
   focus?: string;
 };
@@ -81,12 +81,13 @@ function apply(msg: PreviewMessage, scroll: boolean) {
   // the saved photo are dropped so the draft is what loads.
   document.querySelectorAll<HTMLImageElement>("img[data-image-key]").forEach((im) => {
     const key = im.dataset.imageKey!;
-    const url = msg.images?.[key];
-    if (url && im.dataset.previewSrc !== url) {
+    const photo = msg.images?.[key];
+    if (photo && im.dataset.previewSrc !== photo.src) {
       im.removeAttribute("srcset");
-      im.src = url;
-      im.dataset.previewSrc = url;
+      im.src = photo.src;
+      im.dataset.previewSrc = photo.src;
     }
+    if (photo) im.style.objectPosition = photo.focus ?? "";
     const box = im.parentElement;
     if (!box) return;
     if (key === msg.focus) box.setAttribute("data-preview-focus", "");

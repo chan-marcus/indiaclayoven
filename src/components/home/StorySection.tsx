@@ -45,8 +45,9 @@ export async function StorySection() {
               <article key={n} className="group">
                 <div className="relative aspect-[4/5] overflow-hidden rounded-sm bg-cream-200">
                   <Image
-                    src={img[key]}
-                    alt={imageAlt(key, img[key])}
+                    src={img[key].src}
+                    alt={imageAlt(key, img[key].src)}
+                    style={{ objectPosition: img[key].focus }}
                     data-image-key={key}
                     fill
                     sizes="(max-width: 768px) 100vw, 33vw"

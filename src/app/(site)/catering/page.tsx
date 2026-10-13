@@ -22,9 +22,10 @@ export default async function CateringPage() {
         eyebrow={t["catering.header.eyebrow"]}
         title={t["catering.header.title"]}
         intro={t["catering.header.intro"]}
-        image={img["catering.header"]}
+        image={img["catering.header"].src}
+        imageFocus={img["catering.header"].focus}
         imageKey="catering.header"
-        alt={imageAlt("catering.header", img["catering.header"])}
+        alt={imageAlt("catering.header", img["catering.header"].src)}
       />
 
       <section className="section">

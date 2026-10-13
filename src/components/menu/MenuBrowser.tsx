@@ -319,6 +319,7 @@ function ItemRow({
         >
           <Image
             src={item.image}
+            style={{ objectPosition: item.imageFocus }}
             alt={item.name}
             fill
             sizes="96px"
