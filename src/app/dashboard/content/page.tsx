@@ -474,7 +474,7 @@ function SectionPhotos({
 }) {
   if (photos.length === 0) return null;
   return (
-    <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3">
+    <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-5">
       {photos.map((p) => {
         const photo = value(p.key);
         const busy = uploading[p.key];
@@ -501,8 +501,12 @@ function SectionPhotos({
               )}
             </button>
             <p className="mt-1.5 truncate text-xs text-ink-500">{p.label}</p>
-            <div className="mt-0.5 flex flex-wrap gap-x-3 text-[0.8125rem]">
-              <label className="cursor-pointer text-ink-700 underline-offset-4 hover:text-ink hover:underline has-focus-visible:underline">
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              <label
+                className={`btn btn-secondary btn-sm cursor-pointer px-2 has-focus-visible:ring-2 has-focus-visible:ring-gold ${
+                  busy ? "pointer-events-none opacity-45" : ""
+                }`}
+              >
                 <input
                   type="file"
                   accept="image/*"
@@ -515,20 +519,21 @@ function SectionPhotos({
               <button
                 type="button"
                 onClick={() => onAdjust(p.key)}
-                className="text-ink-700 underline-offset-4 hover:text-ink hover:underline"
+                disabled={busy}
+                className="btn btn-secondary btn-sm px-2"
               >
                 Adjust
               </button>
-              {!isDefaultPhoto(p.key, photo) && (
-                <button
-                  type="button"
-                  onClick={() => onReset(p.key)}
-                  className="text-ink-500 underline-offset-4 hover:text-ink hover:underline"
-                >
-                  Reset
-                </button>
-              )}
             </div>
+            {!isDefaultPhoto(p.key, photo) && (
+              <button
+                type="button"
+                onClick={() => onReset(p.key)}
+                className="mt-1.5 text-xs text-ink-500 underline-offset-4 hover:text-ink hover:underline"
+              >
+                Reset to original
+              </button>
+            )}
             {small[p.key] && !errors[p.key] && (
               <p className="mt-1 text-xs text-gold">May look blurry</p>
             )}

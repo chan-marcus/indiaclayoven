@@ -1173,11 +1173,7 @@ function ItemEditor({
                     {preparing ? "Preparing…" : hasPhoto ? "Change photo" : "Upload photo"}
                   </label>
                   {hasPhoto && (
-                    <button
-                      type="button"
-                      onClick={() => setFraming(true)}
-                      className="text-[0.8125rem] text-ink-700 underline-offset-4 hover:text-ink hover:underline"
-                    >
+                    <button type="button" onClick={() => setFraming(true)} className="btn btn-secondary btn-sm">
                       Adjust
                     </button>
                   )}
