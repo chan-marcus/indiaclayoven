@@ -26,10 +26,31 @@ type PreviewMessage = {
 };
 
 const STYLE = `
-[data-preview-focus] { outline: 2px solid #b4832f; outline-offset: 4px; border-radius: 2px; }
-/* Photos often fill the page width, so their outline goes inside the edge. */
-[data-preview-focus]:has(> img[data-image-key]) { outline-offset: -4px; }
+/* The field or photo being edited. The preview is shown scaled down (about
+   half size on a laptop), so the outline is drawn thick enough to read. */
+[data-preview-focus] {
+  outline: 4px solid #b4832f;
+  outline-offset: 6px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 12px rgba(217, 179, 108, 0.35);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  animation: ico-preview-pulse 1.1s ease-out 2;
+}
+@keyframes ico-preview-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(217, 179, 108, 0.75); }
+  70% { box-shadow: 0 0 0 26px rgba(217, 179, 108, 0); }
+  100% { box-shadow: 0 0 0 12px rgba(217, 179, 108, 0.35); }
+}
+/* Photos often fill the page width, so their outline sits inside the edge. */
+[data-preview-focus]:has(> img[data-image-key]) {
+  outline-width: 6px;
+  outline-offset: -12px;
+  box-shadow: none;
+  animation: none;
+}
 [data-text-key]:has(> [data-text-preview] > .block) { display: block; }
+@media (prefers-reduced-motion: reduce) { [data-preview-focus] { animation: none; } }
 `;
 
 function render(target: HTMLElement, text: string) {
