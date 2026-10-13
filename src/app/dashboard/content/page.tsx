@@ -31,6 +31,21 @@ export default function EditWebsitePage() {
   const [imageErrors, setImageErrors] = useState<Record<string, string>>({});
   /** The text field or photo being edited, outlined in the preview. */
   const [focused, setFocused] = useState<string | undefined>();
+  /** Where the preview should go: the section in view, or the field being edited. */
+  const [target, setTarget] = useState<{ keys: string[]; mode: "section" | "field"; seq: number }>({
+    keys: [],
+    mode: "section",
+    seq: 0,
+  });
+  const goTo = (keys: string[], mode: "section" | "field") =>
+    setTarget((t) =>
+      t.mode === mode && t.keys.join() === keys.join() ? t : { keys, mode, seq: t.seq + 1 },
+    );
+  /** Clicking into a field or photo outlines it and brings it into view. */
+  const focusOn = (key: string) => {
+    setFocused(key);
+    goTo([key], "field");
+  };
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [device, setDevice] = useState<Device>("desktop");
@@ -38,6 +53,39 @@ export default function EditWebsitePage() {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const page = SITE_TEXT[pageIndex];
+  /** Everything in a section the preview can find: its wording, then its photos. */
+  const sectionKeys = (pageAt: number, index: number): string[] => {
+    const p = SITE_TEXT[pageAt];
+    const section = p?.sections[index];
+    if (!section) return [];
+    return [
+      ...section.fields.map((f) => f.key),
+      ...SITE_IMAGES.filter((im) => im.page === p.page && im.section === section.title).map((im) => im.key),
+    ];
+  };
+
+  // The preview follows the section being edited: the last one whose top has
+  // passed 40% of the way down the screen (or the first, at the top).
+  useEffect(() => {
+    let frame = 0;
+    const follow = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const line = window.innerHeight * 0.4;
+        const cards = [...document.querySelectorAll<HTMLElement>("[data-section-index]")];
+        const passed = cards.filter((c) => c.getBoundingClientRect().top < line);
+        // At the very bottom, a short last section can never reach the line.
+        const atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+        const card = atEnd ? cards.at(-1) : (passed.at(-1) ?? cards[0]);
+        if (card) goTo(sectionKeys(pageIndex, Number(card.dataset.sectionIndex)), "section");
+      });
+    };
+    window.addEventListener("scroll", follow, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", follow);
+    };
+  }, [pageIndex]);
   const value = (key: TextKey) => draft[key] ?? text[key];
   const unsavedText = (Object.entries(draft) as [TextKey, string][]).filter(([k, v]) => v !== text[k]);
   const samePhoto = (a: SitePhoto | undefined, b: SitePhoto | undefined) =>
@@ -61,7 +109,7 @@ export default function EditWebsitePage() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    setFocused(key);
+    focusOn(key);
     setImageErrors((x) => ({ ...x, [key]: "" }));
     setUploading((u) => ({ ...u, [key]: true }));
     try {
@@ -124,10 +172,11 @@ export default function EditWebsitePage() {
         images: { ...images, ...imageDraft },
         vars: { phone: settings.phone, cuisine: settings.cuisine },
         focus: focused,
+        target,
       },
       window.location.origin,
     );
-  }, [ready, text, draft, images, imageDraft, focused, settings.phone, settings.cuisine]);
+  }, [ready, text, draft, images, imageDraft, focused, target, settings.phone, settings.cuisine]);
 
   // Scale the page down to fit the panel, keeping its real width.
   useEffect(() => {
@@ -208,6 +257,9 @@ export default function EditWebsitePage() {
               onClick={() => {
                 setPageIndex(i);
                 setFocused(undefined);
+                window.scrollTo({ top: 0 });
+                // Open the preview on this page's first section (the footer, say).
+                goTo(sectionKeys(i, 0), "section");
               }}
               className={`rounded-xs border px-3 py-1.5 text-[0.8125rem] transition-colors ${
                 i === pageIndex
@@ -238,8 +290,12 @@ export default function EditWebsitePage() {
       <div className="mt-6 flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start lg:gap-8">
         <div className="space-y-6">
 
-          {page.sections.map((section) => (
-            <section key={section.title} className="rounded-sm border border-cream-300 bg-white p-6">
+          {page.sections.map((section, i) => (
+            <section
+              key={section.title}
+              data-section-index={i}
+              className="rounded-sm border border-cream-300 bg-white p-6"
+            >
               <h2 className="font-display text-xl">{section.title}</h2>
               <SectionPhotos
                 photos={SITE_IMAGES.filter((im) => im.page === page.page && im.section === section.title)}
@@ -253,10 +309,10 @@ export default function EditWebsitePage() {
                   setSmallPhotos((x) => ({ ...x, [key]: false }));
                 }}
                 onAdjust={(key) => {
-                  setFocused(key);
+                  focusOn(key);
                   setFraming(key);
                 }}
-                onFocus={setFocused}
+                onFocus={focusOn}
               />
               <div className="mt-5 space-y-5">
                 {section.fields.map((field) => {
@@ -284,7 +340,7 @@ export default function EditWebsitePage() {
                           id={id}
                           value={v}
                           onChange={(e) => set(field.key, e.target.value)}
-                          onFocus={() => setFocused(field.key)}
+                          onFocus={() => focusOn(field.key)}
                           rows={Math.min(8, Math.max(2, Math.ceil(v.length / 48) + v.split("\n").length - 1))}
                           className="field-input"
                         />
@@ -293,7 +349,7 @@ export default function EditWebsitePage() {
                           id={id}
                           value={v}
                           onChange={(e) => set(field.key, e.target.value)}
-                          onFocus={() => setFocused(field.key)}
+                          onFocus={() => focusOn(field.key)}
                           className="field-input"
                         />
                       )}
