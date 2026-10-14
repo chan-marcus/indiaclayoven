@@ -154,10 +154,11 @@ export default function OrdersPage() {
               {/* How the ticket reached the kitchen */}
               <section>
                 <h3 className="text-[0.6875rem] font-medium tracking-[0.14em] text-ink-400 uppercase">
-                  {current.delivery.channel === "fax" ? "Order fax" : "Order email"}
+                  Sent to kitchen
                 </h3>
-                <div className="mt-2.5">
-                  <DeliveryStatus order={current} />
+                <div className="mt-2.5 space-y-2">
+                  <DeliveryStatus order={current} kind="fax" />
+                  <DeliveryStatus order={current} kind="email" />
                 </div>
               </section>
 

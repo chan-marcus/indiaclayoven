@@ -14,7 +14,9 @@ export default function OverviewPage() {
   const openOrders = orders.filter((o) => o.status === "new" || o.status === "in_progress");
   const revenue = orders.reduce((s, o) => s + o.total, 0);
   const soldOut = items.filter((i) => !i.available);
-  const faxTrouble = orders.filter((o) => o.delivery.status === "failed");
+  const deliveryTrouble = orders.filter(
+    (o) => o.delivery.status === "failed" || o.emailDelivery?.status === "failed",
+  );
 
   return (
     <div className="container-page py-8">
@@ -40,18 +42,21 @@ export default function OverviewPage() {
         ))}
       </dl>
 
-      {faxTrouble.length > 0 && (
+      {deliveryTrouble.length > 0 && (
         <div className="mt-7">
           <h2 className="text-[0.6875rem] font-medium tracking-[0.14em] text-ink-400 uppercase">
             Needs your attention
           </h2>
           <div className="mt-3 space-y-2">
-            {faxTrouble.map((o) => (
+            {deliveryTrouble.map((o) => (
               <div key={o.id} className="rounded-sm border border-cream-300 bg-white p-4">
                 <p className="mb-2.5 text-[0.9375rem] font-medium">
                   Order {orderNo(o.number)} · {o.customer.name}
                 </p>
-                <DeliveryStatus order={o} />
+                <div className="space-y-2">
+                  {o.delivery.status === "failed" && <DeliveryStatus order={o} kind="fax" />}
+                  {o.emailDelivery?.status === "failed" && <DeliveryStatus order={o} kind="email" />}
+                </div>
               </div>
             ))}
           </div>

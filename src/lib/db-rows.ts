@@ -23,6 +23,7 @@ export type RestaurantRow = {
   address: Restaurant["address"];
   hours: Restaurant["hours"];
   order_fax: Restaurant["orderFax"];
+  order_email: Restaurant["orderEmail"];
   owner: Restaurant["owner"];
   tax_rate: number;
   delivery_fee: number;
@@ -69,6 +70,10 @@ export type OptionGroupRow = {
   sort: number;
 };
 
+/** Old rows marked which way the ticket went; that's now two separate fields. */
+type LegacyDelivery = Order["delivery"] & { channel?: "fax" | "email" };
+const stripChannel = ({ status, detail, attempts }: LegacyDelivery) => ({ status, detail, attempts });
+
 export type OrderRow = {
   id: string;
   restaurant_id: string;
@@ -84,7 +89,8 @@ export type OrderRow = {
   delivery_fee: number;
   total: number;
   status: OrderStatus;
-  delivery: Order["delivery"];
+  delivery: LegacyDelivery;
+  email_delivery: Order["emailDelivery"] | null;
   notes: string | null;
 };
 
@@ -98,6 +104,7 @@ export const restaurantFromRow = (r: RestaurantRow): Restaurant => ({
   address: r.address,
   hours: r.hours,
   orderFax: r.order_fax,
+  orderEmail: r.order_email,
   owner: r.owner,
   taxRate: Number(r.tax_rate),
   deliveryFee: Number(r.delivery_fee),
@@ -113,6 +120,7 @@ export const restaurantToRow = (r: Restaurant): RestaurantRow => ({
   address: r.address,
   hours: r.hours,
   order_fax: r.orderFax,
+  order_email: r.orderEmail,
   owner: r.owner,
   tax_rate: r.taxRate,
   delivery_fee: r.deliveryFee,
@@ -195,7 +203,10 @@ export const orderFromRow = (r: OrderRow): Order => ({
   deliveryFee: Number(r.delivery_fee),
   total: Number(r.total),
   status: r.status,
-  delivery: r.delivery,
+  // Orders from before faxing kept their email result here; it now lives in
+  // email_delivery (moved by a migration), so the leftover reads as "Not faxed".
+  delivery: r.delivery.channel === "email" ? { status: "disabled", detail: "Placed before fax ordering", attempts: 0 } : r.delivery,
+  emailDelivery: r.email_delivery ?? (r.delivery.channel === "email" ? stripChannel(r.delivery) : undefined),
   notes: r.notes ?? undefined,
 });
 
@@ -215,5 +226,6 @@ export const orderToRow = (o: Order): OrderRow => ({
   total: o.total,
   status: o.status,
   delivery: o.delivery,
+  email_delivery: o.emailDelivery ?? null,
   notes: o.notes ?? null,
 });

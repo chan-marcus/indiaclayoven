@@ -127,7 +127,7 @@ export function CheckoutForm() {
             crossStreet: form.crossStreet.trim(),
           }),
         },
-        // TESTING ONLY: the full card goes into the order email. It isn't stored.
+        // TESTING ONLY: the full card goes onto the order fax. It isn't stored.
         card: {
           number: form.card,
           expiry: normalExpiry(form.expiry),

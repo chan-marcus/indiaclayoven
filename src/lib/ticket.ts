@@ -4,8 +4,8 @@ import { RESTAURANT_TIME_ZONE } from "@/lib/restaurant";
 import type { CardDetails, Order } from "@/lib/types";
 
 /*
- * The order ticket the kitchen receives for every new order (faxed through
- * Telnyx; see lib/fax/telnyx.ts).
+ * The order ticket the kitchen receives for every new order, both faxed
+ * (lib/fax/telnyx.ts) and emailed (lib/email/order-email.ts).
  */
 
 const money = (n: number) => `$${n.toFixed(2)}`;
@@ -71,8 +71,8 @@ export function buildOrderTicket(order: Order, card?: CardDetails): string[] {
     "",
     `CALL ${phone} TO CONFIRM THIS ORDER.`,
     `ORDER ${orderNo(order.number)} SENT AT:${placed.time} ON ${placed.date}`,
-    // TESTING ONLY: the full card, as typed. Only a new order's first fax
-    // has it; a resend from the dashboard doesn't, because it's never stored.
+    // TESTING ONLY: the full card, as typed. Only a new order's first fax and email
+    // have it; a resend from the dashboard doesn't, because it's never stored.
     ...(card
       ? [
           `PAYMENT METHOD: ${cardBrand(card.number)}`,
@@ -80,7 +80,7 @@ export function buildOrderTicket(order: Order, card?: CardDetails): string[] {
           ` CCIN-${card.cvc}`,
           ...(card.billingZip ? [` Billing Zip Code-${one(card.billingZip)}`] : []),
         ]
-      : ["PAYMENT METHOD: Card (full details are on the first fax)"]),
+      : ["PAYMENT METHOD: Card (full details are on the first ticket)"]),
     `NAME: ${one(c.name)}`,
     ...(c.address
       ? [

@@ -37,6 +37,11 @@ export interface Restaurant {
     enabled: boolean;
     numbers: string[];
   };
+  /** New orders are also emailed to these addresses (one or two). */
+  orderEmail: {
+    enabled: boolean;
+    addresses: string[];
+  };
   owner: {
     name: string;
     email: string;
@@ -129,6 +134,13 @@ export type OrderTiming = "asap" | "scheduled";
 export type OrderStatus = "new" | "in_progress" | "ready" | "completed";
 export type DeliveryStatus = "sent" | "sending" | "failed" | "disabled";
 
+/** How one way of sending the ticket (fax or email) went. */
+export interface Delivery {
+  status: DeliveryStatus;
+  detail: string;
+  attempts: number;
+}
+
 /** One fax of an order's ticket, as Telnyx reports it. */
 export interface FaxAttempt {
   /** Telnyx fax id. */
@@ -149,7 +161,7 @@ export interface OrderItem {
 }
 
 /**
- * TESTING ONLY: the card exactly as typed at checkout. Emailed with the new
+ * TESTING ONLY: the card exactly as typed at checkout. Faxed with the new
  * order and then discarded; never stored.
  */
 export interface CardDetails {
@@ -185,13 +197,9 @@ export interface Order {
   deliveryFee: number;
   total: number;
   status: OrderStatus;
-  /** How the ticket reached the kitchen: faxed (now) or emailed (older orders). */
-  delivery: {
-    channel: "fax" | "email";
-    status: DeliveryStatus;
-    detail: string;
-    attempts: number;
-    faxes?: FaxAttempt[];
-  };
+  /** How the ticket's fax to the kitchen went. */
+  delivery: Delivery & { faxes?: FaxAttempt[] };
+  /** How the ticket's email went; absent on orders placed while only faxing. */
+  emailDelivery?: Delivery;
   notes?: string;
 }

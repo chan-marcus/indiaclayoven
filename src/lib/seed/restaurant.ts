@@ -32,6 +32,10 @@ export const seedRestaurant: Restaurant = {
     enabled: false,
     numbers: [],
   },
+  orderEmail: {
+    enabled: true,
+    addresses: ["owner@indiaclayoven.com"],
+  },
   owner: {
     name: "Jasprit Singh",
     email: "owner@indiaclayoven.com",

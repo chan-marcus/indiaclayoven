@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Order, OrderStatus } from "@/lib/types";
-import { listOrders, resendOrderFax, setOrderStatus } from "@/app/actions";
+import { listOrders, resendOrderEmail, resendOrderFax, setOrderStatus } from "@/app/actions";
 import { reportFailure, useRestaurantData } from "@/lib/restaurant-data";
 import { unwrap } from "@/lib/action-result";
 
@@ -13,6 +13,7 @@ interface OrdersValue {
   orders: Order[];
   setOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
   retryFax: (id: string) => Promise<void>;
+  retryEmail: (id: string) => Promise<void>;
 }
 
 const Ctx = createContext<OrdersValue | null>(null);
@@ -55,12 +56,27 @@ export function DashboardDataProvider({
     retryFax: async (id) => {
       const before = orders.find((o) => o.id === id);
       if (!before) return;
-      replace({ ...before, delivery: { ...before.delivery, channel: "fax", status: "sending", detail: "Faxing…" } });
+      replace({ ...before, delivery: { ...before.delivery, status: "sending", detail: "Faxing…" } });
       try {
         replace(unwrap(await resendOrderFax(id)));
       } catch (err) {
         replace(before);
         reportFailure("resend that fax", err);
+      }
+    },
+
+    retryEmail: async (id) => {
+      const before = orders.find((o) => o.id === id);
+      if (!before) return;
+      replace({
+        ...before,
+        emailDelivery: { attempts: 0, ...before.emailDelivery, status: "sending", detail: "Sending…" },
+      });
+      try {
+        replace(unwrap(await resendOrderEmail(id)));
+      } catch (err) {
+        replace(before);
+        reportFailure("resend that email", err);
       }
     },
   };
