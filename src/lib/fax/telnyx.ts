@@ -16,8 +16,24 @@ import { PDFDocument, StandardFonts, type PDFFont } from "pdf-lib";
 
 const API = "https://api.telnyx.com/v2/faxes";
 
-export const faxConfigured = () =>
-  Boolean(process.env.TELNYX_API_KEY && process.env.TELNYX_FAX_CONNECTION_ID && process.env.TELNYX_FAX_FROM);
+/** An env value without the stray spaces or quotes that pasting can add. */
+const envValue = (name: string) =>
+  (process.env[name] ?? "").trim().replace(/^["']+|["']+$/g, "").trim();
+
+/** The sending number as E.164 (+16504207499), however it was typed. */
+function fromNumber(): string {
+  const raw = envValue("TELNYX_FAX_FROM");
+  const digits = raw.replace(/\D/g, "");
+  if (raw.startsWith("+")) return `+${digits}`;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return raw;
+}
+
+const apiKey = () => envValue("TELNYX_API_KEY");
+const connectionId = () => envValue("TELNYX_FAX_CONNECTION_ID").replace(/\s+/g, "");
+
+export const faxConfigured = () => Boolean(apiKey() && connectionId() && envValue("TELNYX_FAX_FROM"));
 
 /* ------------------------------------------------------------------ */
 /* Ticket PDF                                                          */
@@ -98,15 +114,18 @@ export type SendResult = { ok: true; id: string; status: string } | { ok: false;
 
 type TelnyxError = { errors?: { title?: string; detail?: string }[] };
 
-const errorText = (body: TelnyxError | null, status: number) =>
-  (body?.errors?.[0]?.detail || body?.errors?.[0]?.title || `Fax service error ${status}`).slice(0, 140);
+function errorText(body: TelnyxError | null, status: number) {
+  // Telnyx answers a wrong fax app ID or sending number with a generic error.
+  if (status >= 500) return "Telnyx couldn't send it. Check the Telnyx settings on Vercel";
+  return (body?.errors?.[0]?.detail || body?.errors?.[0]?.title || `Fax service error ${status}`).slice(0, 140);
+}
 
 /** Sends one fax of the PDF. Telnyx then works on it; check progress with faxStatus. */
 export async function sendFax(pdf: Uint8Array, to: string): Promise<SendResult> {
   if (!faxConfigured()) return { ok: false, reason: "Fax service not set up" };
   const form = new FormData();
-  form.append("connection_id", process.env.TELNYX_FAX_CONNECTION_ID!);
-  form.append("from", process.env.TELNYX_FAX_FROM!);
+  form.append("connection_id", connectionId());
+  form.append("from", fromNumber());
   form.append("to", to);
   form.append("contents", new Blob([pdf as BlobPart], { type: "application/pdf" }), "order.pdf");
   // Text tickets fax most legibly in black and white.
@@ -115,7 +134,7 @@ export async function sendFax(pdf: Uint8Array, to: string): Promise<SendResult> 
   try {
     const res = await fetch(API, {
       method: "POST",
-      headers: { Authorization: `Bearer ${process.env.TELNYX_API_KEY}` },
+      headers: { Authorization: `Bearer ${apiKey()}` },
       body: form,
       signal: AbortSignal.timeout(20_000),
     });
@@ -131,10 +150,10 @@ export async function sendFax(pdf: Uint8Array, to: string): Promise<SendResult> 
 
 /** Where a sent fax has got to: queued, sending, delivered, failed… */
 export async function faxStatus(id: string): Promise<{ status: string; failureReason?: string } | null> {
-  if (!process.env.TELNYX_API_KEY) return null;
+  if (!apiKey()) return null;
   try {
     const res = await fetch(`${API}/${encodeURIComponent(id)}`, {
-      headers: { Authorization: `Bearer ${process.env.TELNYX_API_KEY}` },
+      headers: { Authorization: `Bearer ${apiKey()}` },
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return null;
