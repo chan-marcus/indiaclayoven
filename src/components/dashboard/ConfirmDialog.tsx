@@ -1,14 +1,17 @@
 "use client";
 
 /**
- * Asks before anything in the dashboard that removes or throws away work.
- * The confirm button is red; cancelling (or clicking outside) changes nothing.
+ * Asks before anything in the dashboard that removes or throws away work, or
+ * that reaches the outside world (like printing a test fax). The confirm
+ * button is red unless `tone` is "primary"; cancelling (or clicking outside)
+ * changes nothing.
  */
 export function ConfirmDialog({
   title,
   body,
   confirmLabel,
   cancelLabel = "Keep it",
+  tone = "danger",
   onCancel,
   onConfirm,
 }: {
@@ -16,6 +19,7 @@ export function ConfirmDialog({
   body: React.ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
+  tone?: "danger" | "primary";
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
 }) {
@@ -32,7 +36,9 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className="btn flex-1 bg-danger whitespace-nowrap text-cream hover:opacity-90"
+            className={`btn flex-1 whitespace-nowrap ${
+              tone === "danger" ? "bg-danger text-cream hover:opacity-90" : "btn-primary"
+            }`}
           >
             {confirmLabel}
           </button>

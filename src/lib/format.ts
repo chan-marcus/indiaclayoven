@@ -36,3 +36,9 @@ export const relativeTime = (iso: string) => {
   if (hrs < 24) return `${hrs} hr ago`;
   return `${Math.round(hrs / 24)} d ago`;
 };
+
+/** "+14157801730" as "+1 (415) 780-1730"; other numbers as given. */
+export const formatPhone = (e164: string) => {
+  const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164);
+  return m ? `+1 (${m[1]}) ${m[2]}-${m[3]}` : e164;
+};

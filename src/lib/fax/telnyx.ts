@@ -120,8 +120,12 @@ function errorText(body: TelnyxError | null, status: number) {
   return (body?.errors?.[0]?.detail || body?.errors?.[0]?.title || `Fax service error ${status}`).slice(0, 140);
 }
 
-/** Sends one fax of the PDF. Telnyx then works on it; check progress with faxStatus. */
-export async function sendFax(pdf: Uint8Array, to: string): Promise<SendResult> {
+/**
+ * Sends one fax of the PDF. Telnyx then works on it; check progress with
+ * faxStatus. `tag` ("order:12", "test") is stored with the fax so the fax log
+ * can say what it was.
+ */
+export async function sendFax(pdf: Uint8Array, to: string, tag?: string): Promise<SendResult> {
   if (!faxConfigured()) return { ok: false, reason: "Fax service not set up" };
   const form = new FormData();
   form.append("connection_id", connectionId());
@@ -130,6 +134,7 @@ export async function sendFax(pdf: Uint8Array, to: string): Promise<SendResult> 
   form.append("contents", new Blob([pdf as BlobPart], { type: "application/pdf" }), "order.pdf");
   // Text tickets fax most legibly in black and white.
   form.append("monochrome", "true");
+  if (tag) form.append("client_state", Buffer.from(tag).toString("base64"));
 
   try {
     const res = await fetch(API, {
@@ -175,4 +180,98 @@ export function failureText(reason: string | undefined): string {
   if (/account_disabled|no_outbound_profile/.test(r)) return "The fax account isn't set up to send";
   if (/dropped|communication|signaling|ecm|incompatible/.test(r)) return "The call dropped partway";
   return r ? r.replace(/_/g, " ") : "The fax didn't go through";
+}
+
+/* ------------------------------------------------------------------ */
+/* Fax page in the dashboard                                           */
+/* ------------------------------------------------------------------ */
+
+/** One fax as the dashboard's fax log shows it. */
+export type FaxRecord = {
+  id: string;
+  to: string;
+  status: string;
+  failureReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  /** What it was: "order:12", "test", or unknown for faxes sent another way. */
+  tag?: string;
+};
+
+/** Recent outbound faxes, newest first. Null if Telnyx can't be reached or the key is wrong. */
+export async function listFaxes(limit = 50): Promise<FaxRecord[] | null> {
+  if (!apiKey()) return null;
+  const q = new URLSearchParams({ "page[size]": String(limit), "filter[direction][eq]": "outbound" });
+  try {
+    const res = await fetch(`${API}?${q}`, {
+      headers: { Authorization: `Bearer ${apiKey()}` },
+      signal: AbortSignal.timeout(10_000),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      data?: {
+        id: string;
+        to: string;
+        status: string;
+        failure_reason?: string | null;
+        created_at: string;
+        updated_at: string;
+        client_state?: string | null;
+      }[];
+    };
+    return (body.data ?? []).map((f) => ({
+      id: f.id,
+      to: f.to,
+      status: f.status,
+      failureReason: f.failure_reason ?? undefined,
+      createdAt: f.created_at,
+      updatedAt: f.updated_at,
+      tag: f.client_state ? Buffer.from(f.client_state, "base64").toString("utf8") : undefined,
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/** Whether the pieces faxing needs are all in place, for the dashboard's Fax page. */
+export type FaxHealth = {
+  configured: boolean;
+  keyWorks: boolean;
+  app?: { name: string; active: boolean; outbound: boolean };
+  number?: { phone: string; active: boolean; onApp: boolean };
+  from: string;
+};
+
+export async function faxHealth(): Promise<FaxHealth> {
+  const from = fromNumber();
+  if (!faxConfigured()) return { configured: false, keyWorks: false, from };
+  const get = async (path: string) => {
+    try {
+      const res = await fetch(`https://api.telnyx.com/v2/${path}`, {
+        headers: { Authorization: `Bearer ${apiKey()}` },
+        signal: AbortSignal.timeout(10_000),
+        cache: "no-store",
+      });
+      return { ok: res.ok, status: res.status, body: res.ok ? await res.json() : null };
+    } catch {
+      return { ok: false, status: 0, body: null };
+    }
+  };
+  const [app, nums] = await Promise.all([
+    get(`fax_applications/${encodeURIComponent(connectionId())}`),
+    get(`phone_numbers?${new URLSearchParams({ "filter[phone_number]": from })}`),
+  ]);
+  const keyWorks = app.status !== 401 && nums.status !== 401 && (app.ok || nums.ok);
+  const a = app.body?.data;
+  const n = nums.body?.data?.[0];
+  return {
+    configured: true,
+    keyWorks,
+    from,
+    app: a
+      ? { name: a.application_name, active: Boolean(a.active), outbound: Boolean(a.outbound?.outbound_voice_profile_id) }
+      : undefined,
+    number: n ? { phone: n.phone_number, active: n.status === "active", onApp: n.connection_id === connectionId() } : undefined,
+  };
 }

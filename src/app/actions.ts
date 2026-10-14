@@ -34,7 +34,17 @@ import {
 import type { ActionResult } from "@/lib/action-result";
 import { choicePrice, unitPrice } from "@/lib/pricing";
 import { buildOrderTicket } from "@/lib/ticket";
-import { failureText, faxConfigured, faxStatus, sendFax, ticketPdf } from "@/lib/fax/telnyx";
+import {
+  failureText,
+  faxConfigured,
+  faxHealth,
+  faxStatus,
+  listFaxes,
+  sendFax,
+  ticketPdf,
+  type FaxHealth,
+  type FaxRecord,
+} from "@/lib/fax/telnyx";
 import { sendOrderEmail } from "@/lib/email/order-email";
 import type {
   Category,
@@ -856,7 +866,9 @@ async function deliverOrderFax(order: Order, restaurant: Restaurant, card?: Card
     return saveDelivery(order, { status: "failed", detail: "Fax service not set up", attempts });
   }
   const pdf = await ticketPdf(buildOrderTicket(order, card), `Order ${order.number}`);
-  const results = await Promise.all(restaurant.orderFax.numbers.map((to) => sendFax(pdf, to).then((r) => ({ to, r }))));
+  const results = await Promise.all(
+    restaurant.orderFax.numbers.map((to) => sendFax(pdf, to, `order:${order.number}`).then((r) => ({ to, r }))),
+  );
   const faxes = results.flatMap(({ to, r }) => (r.ok ? [{ id: r.id, to, status: r.status }] : []));
   const refused = results.find(({ r }) => !r.ok);
 
@@ -962,6 +974,106 @@ export async function resendOrderFax(id: string): Promise<ActionResult<Order>> {
     }
     const order = orderFromRow(check<OrderRow>(row, "find the order"));
     return deliverOrderFax(order, restaurant);
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Fax page (owner)                                                    */
+/* ------------------------------------------------------------------ */
+
+export type FaxLogEntry = FaxRecord & {
+  /** The order this fax was for, when it was an order ticket. */
+  order?: { id: string; number: number; customer: string };
+  test: boolean;
+  /** Why it failed, in plain words. */
+  reason?: string;
+};
+
+export type FaxOverview = {
+  health: FaxHealth;
+  enabled: boolean;
+  kitchenNumbers: string[];
+  /** Null when Telnyx couldn't be reached. */
+  log: FaxLogEntry[] | null;
+};
+
+/** Everything the dashboard's Fax page shows. Also brings order fax statuses up to date. */
+export async function faxOverview(): Promise<ActionResult<FaxOverview>> {
+  return run(async () => {
+    const [restaurant, orders, health, faxes] = await Promise.all([
+      getRestaurant(),
+      getOrders(),
+      faxHealth(),
+      listFaxes(50),
+    ]);
+    await syncFaxes(orders);
+
+    // Link faxes to orders by fax id, or by the order number tagged on them.
+    const byFaxId = new Map<string, Order>();
+    for (const o of orders) for (const f of o.delivery.faxes ?? []) byFaxId.set(f.id, o);
+    const byNumber = new Map(orders.map((o) => [o.number, o]));
+    const log =
+      faxes?.map((f) => {
+        const tagged = f.tag?.startsWith("order:") ? byNumber.get(Number(f.tag.slice(6))) : undefined;
+        const o = byFaxId.get(f.id) ?? tagged;
+        return {
+          ...f,
+          order: o ? { id: o.id, number: o.number, customer: o.customer.name } : undefined,
+          test: f.tag === "test",
+          reason: f.status === "failed" ? failureText(f.failureReason) : undefined,
+        };
+      }) ?? null;
+
+    return { health, enabled: restaurant.orderFax.enabled, kitchenNumbers: restaurant.orderFax.numbers, log };
+  });
+}
+
+/** Faxes a one-page "this is a test" sheet to each kitchen number. */
+export async function sendTestFax(): Promise<ActionResult<{ sent: number; failed: string[] }>> {
+  return run(async () => {
+    const restaurant = await getRestaurant();
+    if (restaurant.orderFax.numbers.length === 0) throw new InputError("Add a fax number in Settings first");
+    if (!faxConfigured()) throw new InputError("The fax service isn't set up yet");
+    const now = new Date();
+    const when = now.toLocaleString("en-US", {
+      timeZone: RESTAURANT_TIME_ZONE,
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+    const pdf = await ticketPdf(
+      [
+        "TEST FAX - NOT AN ORDER",
+        `This is a test page from the ${restaurant.name} website.`,
+        "Nothing needs to be made.",
+        "",
+        "If you can read this, order faxes will print here.",
+        "",
+        `SENT: ${when}`,
+      ],
+      "Test fax",
+    );
+    const results = await Promise.all(restaurant.orderFax.numbers.map((to) => sendFax(pdf, to, "test")));
+    const failed = results.flatMap((r) => (r.ok ? [] : [r.reason]));
+    return { sent: results.length - failed.length, failed };
+  });
+}
+
+/** Turns faxing new orders on or off, keeping the numbers. */
+export async function setFaxEnabled(enabled: boolean): Promise<ActionResult<Restaurant>> {
+  return run(async () => {
+    const current = await getRestaurant();
+    const orderFax = orderFaxSettings({ ...current.orderFax, enabled: Boolean(enabled) });
+    const row = check<RestaurantRow>(
+      await supabase
+        .from("restaurants")
+        .update({ order_fax: orderFax, updated_at: new Date().toISOString() })
+        .eq("id", RESTAURANT_ID)
+        .select()
+        .single(),
+      "save the fax setting",
+    );
+    refreshSite();
+    return restaurantFromRow(row);
   });
 }
 
