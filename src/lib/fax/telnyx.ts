@@ -198,17 +198,24 @@ export type FaxRecord = {
   tag?: string;
 };
 
-/** Recent outbound faxes, newest first. Null if Telnyx can't be reached or the key is wrong. */
+/**
+ * Recent outbound faxes, newest first. Telnyx's list sometimes stalls and
+ * then errors, so a slow or failed try is retried once. Null if it still
+ * fails (or the key is wrong).
+ */
 export async function listFaxes(limit = 50): Promise<FaxRecord[] | null> {
   if (!apiKey()) return null;
   const q = new URLSearchParams({ "page[size]": String(limit), "filter[direction][eq]": "outbound" });
-  try {
-    const res = await fetch(`${API}?${q}`, {
+  const attempt = () =>
+    fetch(`${API}?${q}`, {
       headers: { Authorization: `Bearer ${apiKey()}` },
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(5_000),
       cache: "no-store",
-    });
-    if (!res.ok) return null;
+    }).catch(() => null);
+  try {
+    let res = await attempt();
+    if (!res || res.status >= 500 || res.status === 429) res = await attempt();
+    if (!res || !res.ok) return null;
     const body = (await res.json()) as {
       data?: {
         id: string;

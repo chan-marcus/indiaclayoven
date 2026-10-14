@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { faxOverview, resendOrderFax, sendTestFax, setFaxEnabled, type FaxLogEntry, type FaxOverview } from "@/app/actions";
 import { unwrap } from "@/lib/action-result";
 import { reportFailure } from "@/lib/restaurant-data";
@@ -40,7 +40,7 @@ const sameDay = (a: Date, b: Date) =>
   b.toLocaleDateString("en-US", { timeZone: RESTAURANT_TIME_ZONE });
 
 export default function FaxPage() {
-  const [data, setData] = useState<FaxOverview | null>(null);
+  const [data, setData] = useState<(FaxOverview & { stale?: boolean }) | null>(null);
   const [loadError, setLoadError] = useState("");
   const [updated, setUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,12 +49,22 @@ export default function FaxPage() {
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
 
+  /** The last full log from Telnyx, kept on screen if a later refresh can't reach it. */
+  const lastGood = useRef<FaxOverview | null>(null);
+
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      setData(unwrap(await faxOverview()));
+      const next = unwrap(await faxOverview());
+      if (next.logSource === "orders" && lastGood.current) {
+        // Telnyx hiccuped mid-session: keep its last full log on screen.
+        setData({ ...next, log: lastGood.current.log, stale: true });
+      } else {
+        if (next.logSource === "telnyx") lastGood.current = next;
+        setData(next);
+        setUpdated(new Date());
+      }
       setLoadError("");
-      setUpdated(new Date());
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -193,11 +203,19 @@ export default function FaxPage() {
               })}
             </div>
 
-            {data.log === null ? (
-              <p className="mt-4 rounded-sm border border-cream-300 bg-white p-6 text-ink-500">
-                Telnyx couldn&rsquo;t be reached, so the log can&rsquo;t be shown right now.
+            {(data.logSource === "orders" || data.stale) && (
+              <p className="mt-3 rounded-sm border border-gold/40 bg-gold-soft/30 px-4 py-2.5 text-[0.8125rem] text-ink-700">
+                {data.stale ? (
+                  <span className="block">Telnyx didn&rsquo;t answer just now, so this is the last update.</span>
+                ) : (
+                  <>
+                    <span className="block">Telnyx didn&rsquo;t answer just now, so these are the order faxes saved here.</span>
+                    <span className="block">It&rsquo;ll try again in a few seconds.</span>
+                  </>
+                )}
               </p>
-            ) : shown.length === 0 ? (
+            )}
+            {shown.length === 0 ? (
               <p className="mt-4 rounded-sm border border-cream-300 bg-white p-6 text-ink-500">
                 {log.length === 0 ? "No faxes yet. They appear here as orders come in." : "Nothing here."}
               </p>

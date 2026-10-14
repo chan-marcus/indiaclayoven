@@ -993,8 +993,12 @@ export type FaxOverview = {
   health: FaxHealth;
   enabled: boolean;
   kitchenNumbers: string[];
-  /** Null when Telnyx couldn't be reached. */
-  log: FaxLogEntry[] | null;
+  log: FaxLogEntry[];
+  /**
+   * "telnyx": the full log from Telnyx. "orders": Telnyx couldn't be reached,
+   * so this is built from the order faxes saved here (test faxes aren't).
+   */
+  logSource: "telnyx" | "orders";
 };
 
 /** Everything the dashboard's Fax page shows. Also brings order fax statuses up to date. */
@@ -1012,7 +1016,7 @@ export async function faxOverview(): Promise<ActionResult<FaxOverview>> {
     const byFaxId = new Map<string, Order>();
     for (const o of orders) for (const f of o.delivery.faxes ?? []) byFaxId.set(f.id, o);
     const byNumber = new Map(orders.map((o) => [o.number, o]));
-    const log =
+    const fromTelnyx =
       faxes?.map((f) => {
         const tagged = f.tag?.startsWith("order:") ? byNumber.get(Number(f.tag.slice(6))) : undefined;
         const o = byFaxId.get(f.id) ?? tagged;
@@ -1024,7 +1028,33 @@ export async function faxOverview(): Promise<ActionResult<FaxOverview>> {
         };
       }) ?? null;
 
-    return { health, enabled: restaurant.orderFax.enabled, kitchenNumbers: restaurant.orderFax.numbers, log };
+    // Telnyx down or slow: show the order faxes saved on each order instead.
+    const fromOrders = (): FaxLogEntry[] =>
+      orders
+        .flatMap((o) =>
+          (o.delivery.faxes ?? []).map((f) => ({
+            id: f.id,
+            to: f.to,
+            status: f.status,
+            failureReason: f.failureReason,
+            createdAt: o.placedAt,
+            updatedAt: o.placedAt,
+            tag: `order:${o.number}`,
+            order: { id: o.id, number: o.number, customer: o.customer.name },
+            test: false,
+            reason: f.status === "failed" ? failureText(f.failureReason) : undefined,
+          })),
+        )
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 50);
+
+    return {
+      health,
+      enabled: restaurant.orderFax.enabled,
+      kitchenNumbers: restaurant.orderFax.numbers,
+      log: fromTelnyx ?? fromOrders(),
+      logSource: fromTelnyx ? "telnyx" : "orders",
+    };
   });
 }
 
