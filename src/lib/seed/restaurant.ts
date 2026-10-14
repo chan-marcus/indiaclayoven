@@ -28,9 +28,9 @@ export const seedRestaurant: Restaurant = {
       { days: "Sunday", time: "9:45am – 10:00pm" },
     ],
   },
-  orderEmail: {
-    enabled: true,
-    addresses: ["owner@indiaclayoven.com"],
+  orderFax: {
+    enabled: false,
+    numbers: [],
   },
   owner: {
     name: "Jasprit Singh",

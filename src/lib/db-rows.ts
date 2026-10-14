@@ -22,7 +22,7 @@ export type RestaurantRow = {
   email: string;
   address: Restaurant["address"];
   hours: Restaurant["hours"];
-  order_email: Restaurant["orderEmail"];
+  order_fax: Restaurant["orderFax"];
   owner: Restaurant["owner"];
   tax_rate: number;
   delivery_fee: number;
@@ -84,7 +84,7 @@ export type OrderRow = {
   delivery_fee: number;
   total: number;
   status: OrderStatus;
-  email_delivery: Order["emailDelivery"];
+  delivery: Order["delivery"];
   notes: string | null;
 };
 
@@ -97,7 +97,7 @@ export const restaurantFromRow = (r: RestaurantRow): Restaurant => ({
   email: r.email,
   address: r.address,
   hours: r.hours,
-  orderEmail: r.order_email,
+  orderFax: r.order_fax,
   owner: r.owner,
   taxRate: Number(r.tax_rate),
   deliveryFee: Number(r.delivery_fee),
@@ -112,7 +112,7 @@ export const restaurantToRow = (r: Restaurant): RestaurantRow => ({
   email: r.email,
   address: r.address,
   hours: r.hours,
-  order_email: r.orderEmail,
+  order_fax: r.orderFax,
   owner: r.owner,
   tax_rate: r.taxRate,
   delivery_fee: r.deliveryFee,
@@ -195,7 +195,7 @@ export const orderFromRow = (r: OrderRow): Order => ({
   deliveryFee: Number(r.delivery_fee),
   total: Number(r.total),
   status: r.status,
-  emailDelivery: r.email_delivery,
+  delivery: r.delivery,
   notes: r.notes ?? undefined,
 });
 
@@ -214,6 +214,6 @@ export const orderToRow = (o: Order): OrderRow => ({
   delivery_fee: o.deliveryFee,
   total: o.total,
   status: o.status,
-  email_delivery: o.emailDelivery,
+  delivery: o.delivery,
   notes: o.notes ?? null,
 });

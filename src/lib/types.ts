@@ -32,10 +32,10 @@ export interface Restaurant {
     buffet: string;
     detail: { days: string; time: string }[];
   };
-  /** New orders are emailed to these addresses (one or two). */
-  orderEmail: {
+  /** New orders are faxed to these numbers (one or two, E.164) through Telnyx. */
+  orderFax: {
     enabled: boolean;
-    addresses: string[];
+    numbers: string[];
   };
   owner: {
     name: string;
@@ -127,7 +127,17 @@ export interface CartLine {
 export type OrderType = "pickup" | "delivery";
 export type OrderTiming = "asap" | "scheduled";
 export type OrderStatus = "new" | "in_progress" | "ready" | "completed";
-export type EmailStatus = "sent" | "sending" | "failed" | "disabled";
+export type DeliveryStatus = "sent" | "sending" | "failed" | "disabled";
+
+/** One fax of an order's ticket, as Telnyx reports it. */
+export interface FaxAttempt {
+  /** Telnyx fax id. */
+  id: string;
+  to: string;
+  /** Telnyx status: queued, media.processed, sending, delivered, failed… */
+  status: string;
+  failureReason?: string;
+}
 
 export interface OrderItem {
   itemId: ID;
@@ -175,10 +185,13 @@ export interface Order {
   deliveryFee: number;
   total: number;
   status: OrderStatus;
-  emailDelivery: {
-    status: EmailStatus;
+  /** How the ticket reached the kitchen: faxed (now) or emailed (older orders). */
+  delivery: {
+    channel: "fax" | "email";
+    status: DeliveryStatus;
     detail: string;
     attempts: number;
+    faxes?: FaxAttempt[];
   };
   notes?: string;
 }

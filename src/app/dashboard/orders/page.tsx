@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useDashboard } from "@/lib/dashboard-data";
 import { choiceText, currency, timeOfDay, dayAndTime, deliveryAddress, orderNo } from "@/lib/format";
 import { RelativeTime } from "@/components/dashboard/RelativeTime";
-import { EmailStatus } from "@/components/dashboard/EmailStatus";
+import { DeliveryStatus } from "@/components/dashboard/DeliveryStatus";
 import type { Order, OrderStatus } from "@/lib/types";
 import { IconClose } from "@/components/ui/icons";
 
@@ -151,13 +151,13 @@ export default function OrdersPage() {
                 </div>
               </section>
 
-              {/* Order email */}
+              {/* How the ticket reached the kitchen */}
               <section>
                 <h3 className="text-[0.6875rem] font-medium tracking-[0.14em] text-ink-400 uppercase">
-                  Order email
+                  {current.delivery.channel === "fax" ? "Order fax" : "Order email"}
                 </h3>
                 <div className="mt-2.5">
-                  <EmailStatus order={current} />
+                  <DeliveryStatus order={current} />
                 </div>
               </section>
 

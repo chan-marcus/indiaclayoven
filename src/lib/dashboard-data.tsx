@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Order, OrderStatus } from "@/lib/types";
-import { listOrders, resendOrderEmail, setOrderStatus } from "@/app/actions";
+import { listOrders, resendOrderFax, setOrderStatus } from "@/app/actions";
 import { reportFailure, useRestaurantData } from "@/lib/restaurant-data";
 import { unwrap } from "@/lib/action-result";
 
@@ -12,7 +12,7 @@ const POLL_MS = 15_000;
 interface OrdersValue {
   orders: Order[];
   setOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
-  retryEmail: (id: string) => Promise<void>;
+  retryFax: (id: string) => Promise<void>;
 }
 
 const Ctx = createContext<OrdersValue | null>(null);
@@ -52,15 +52,15 @@ export function DashboardDataProvider({
       }
     },
 
-    retryEmail: async (id) => {
+    retryFax: async (id) => {
       const before = orders.find((o) => o.id === id);
       if (!before) return;
-      replace({ ...before, emailDelivery: { ...before.emailDelivery, status: "sending", detail: "Sending…" } });
+      replace({ ...before, delivery: { ...before.delivery, channel: "fax", status: "sending", detail: "Faxing…" } });
       try {
-        replace(unwrap(await resendOrderEmail(id)));
+        replace(unwrap(await resendOrderFax(id)));
       } catch (err) {
         replace(before);
-        reportFailure("resend that email", err);
+        reportFailure("resend that fax", err);
       }
     },
   };

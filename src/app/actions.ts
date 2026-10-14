@@ -33,7 +33,8 @@ import {
 } from "@/lib/db-rows";
 import type { ActionResult } from "@/lib/action-result";
 import { choicePrice, unitPrice } from "@/lib/pricing";
-import { sendOrderEmail } from "@/lib/email/order-email";
+import { buildOrderTicket } from "@/lib/ticket";
+import { failureText, faxConfigured, faxStatus, sendFax, ticketPdf } from "@/lib/fax/telnyx";
 import type {
   Category,
   Choice,
@@ -97,13 +98,6 @@ function emailAddress(value: unknown, field: string): string {
   if (!EMAIL_RE.test(v)) throw new InputError(`${field} does not look like an email address`);
   return v;
 }
-
-const sentNow = () =>
-  `Sent ${new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: RESTAURANT_TIME_ZONE,
-  })}`;
 
 /** Menu and settings changes appear on the public site. */
 const refreshSite = () => revalidatePath("/", "layout");
@@ -652,7 +646,7 @@ export async function setOptionGroupOnItems(
 
 export type PlaceOrderInput = {
   customer: Order["customer"];
-  /** TESTING ONLY: emailed with the order, never stored. */
+  /** TESTING ONLY: faxed with the order, never stored. */
   card: CardDetails;
   type: OrderType;
   timing: OrderTiming;
@@ -757,9 +751,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
           delivery_fee: deliveryFee,
           total: round2(subtotal + tax + deliveryFee),
           status: "new",
-          email_delivery: emailsOn(restaurant)
-            ? { status: "sending", detail: "Sending…", attempts: 0 }
-            : { status: "disabled", detail: "Order emails are off", attempts: 0 },
+          delivery: faxOn(restaurant)
+            ? { channel: "fax", status: "sending", detail: "Faxing…", attempts: 0 }
+            : { channel: "fax", status: "disabled", detail: "Order faxing is off", attempts: 0 },
           notes: optionalText(input.notes, "Order note", 1000),
         })
         .select()
@@ -767,18 +761,25 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<O
       "place your order",
     );
     const order = orderFromRow(row);
-    // Email after the customer has their confirmation, so a slow or failing
-    // email service never holds up or loses an order.
-    // The card is only captured by this closure, so it reaches the email and
+    // Fax after the customer has their confirmation, so a slow or failing
+    // fax service never holds up or loses an order.
+    // The card is only captured by this closure, so it reaches the fax and
     // is gone once it has been sent.
-    if (emailsOn(restaurant)) after(() => deliverOrderEmail(order, restaurant, card));
+    if (faxOn(restaurant)) after(() => deliverOrderFax(order, restaurant, card));
     return order;
   });
 }
 
 export async function listOrders(): Promise<ActionResult<Order[]>> {
   return run(async () => {
-    return getOrders();
+    const orders = await getOrders();
+    if (!(await syncFaxes(orders))) return orders;
+    // getOrders is cached for this request; read again for the new statuses.
+    const fresh = check<OrderRow[]>(
+      await supabase.from("orders").select("*").eq("restaurant_id", RESTAURANT_ID).order("placed_at", { ascending: false }),
+      "load orders",
+    );
+    return fresh.map(orderFromRow);
   });
 }
 
@@ -799,7 +800,7 @@ export async function setOrderStatus(id: string, status: OrderStatus): Promise<A
 }
 
 /**
- * TESTING ONLY: the full card goes into the order email and nowhere else.
+ * TESTING ONLY: the full card goes onto the order fax and nowhere else.
  * It is never written to the database.
  */
 function cardDetails(p: CardDetails | undefined): CardDetails {
@@ -812,35 +813,91 @@ function cardDetails(p: CardDetails | undefined): CardDetails {
   return { number, expiry, cvc, billingZip: optionalText(p?.billingZip, "Billing ZIP", 10) ?? undefined };
 }
 
-const emailsOn = (r: Restaurant) => r.orderEmail.enabled && r.orderEmail.addresses.length > 0;
+const faxOn = (r: Restaurant) => r.orderFax.enabled && r.orderFax.numbers.length > 0;
 
-/** Sends the order email and records the outcome on the order. */
-async function deliverOrderEmail(
-  order: Order,
-  restaurant: Restaurant,
-  card?: CardDetails,
-): Promise<Order> {
-  const result = await sendOrderEmail(order, restaurant, card);
+const faxedAt = () =>
+  `Faxed ${new Date().toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: RESTAURANT_TIME_ZONE,
+  })}`;
+
+async function saveDelivery(order: Order, delivery: Order["delivery"]): Promise<Order> {
   const row = check<OrderRow>(
     await supabase
       .from("orders")
-      .update({
-        email_delivery: {
-          status: result.ok ? "sent" : "failed",
-          detail: result.ok ? sentNow() : result.reason,
-          attempts: order.emailDelivery.attempts + 1,
-        },
-      })
+      .update({ delivery })
       .eq("id", order.id)
       .eq("restaurant_id", RESTAURANT_ID)
       .select()
       .single(),
-    "record the email result",
+    "record the fax result",
   );
   return orderFromRow(row);
 }
 
-export async function resendOrderEmail(id: string): Promise<ActionResult<Order>> {
+/**
+ * Faxes the order ticket to each number in Settings and records what Telnyx
+ * said. Delivery takes a minute or two; listOrders checks on it.
+ */
+async function deliverOrderFax(order: Order, restaurant: Restaurant, card?: CardDetails): Promise<Order> {
+  const attempts = order.delivery.attempts + 1;
+  if (!faxConfigured()) {
+    return saveDelivery(order, { channel: "fax", status: "failed", detail: "Fax service not set up", attempts });
+  }
+  const pdf = await ticketPdf(buildOrderTicket(order, card), `Order ${order.number}`);
+  const results = await Promise.all(restaurant.orderFax.numbers.map((to) => sendFax(pdf, to).then((r) => ({ to, r }))));
+  const faxes = results.flatMap(({ to, r }) => (r.ok ? [{ id: r.id, to, status: r.status }] : []));
+  const refused = results.find(({ r }) => !r.ok);
+
+  if (faxes.length === 0) {
+    const reason = refused && !refused.r.ok ? refused.r.reason : "The fax didn't go through";
+    return saveDelivery(order, { channel: "fax", status: "failed", detail: reason, attempts });
+  }
+  return saveDelivery(order, {
+    channel: "fax",
+    status: "sending",
+    detail: refused ? `Faxing… (one number refused)` : "Faxing…",
+    attempts,
+    faxes,
+  });
+}
+
+/**
+ * Asks Telnyx how recent faxes are doing and records it: Faxed once every
+ * fax is delivered, Failed (with the reason) if one fails.
+ */
+async function syncFaxes(orders: Order[]): Promise<boolean> {
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const pending = orders
+    .filter((o) => o.delivery.channel === "fax" && o.delivery.status === "sending" && o.delivery.faxes?.length)
+    .filter((o) => new Date(o.placedAt).getTime() > dayAgo)
+    .slice(0, 10);
+  let changed = false;
+  for (const order of pending) {
+    const faxes = await Promise.all(
+      order.delivery.faxes!.map(async (f) => {
+        if (f.status === "delivered" || f.status === "failed") return f;
+        const now = await faxStatus(f.id);
+        return now ? { ...f, status: now.status, failureReason: now.failureReason } : f;
+      }),
+    );
+    const failed = faxes.find((f) => f.status === "failed");
+    const done = faxes.every((f) => f.status === "delivered");
+    const next: Order["delivery"] = failed
+      ? { ...order.delivery, faxes, status: "failed", detail: failureText(failed.failureReason) }
+      : done
+        ? { ...order.delivery, faxes, status: "sent", detail: faxedAt() }
+        : { ...order.delivery, faxes };
+    if (JSON.stringify(next) !== JSON.stringify(order.delivery)) {
+      await saveDelivery(order, next);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+export async function resendOrderFax(id: string): Promise<ActionResult<Order>> {
   return run(async () => {
     const [restaurant, row] = await Promise.all([
       getRestaurant(),
@@ -851,10 +908,11 @@ export async function resendOrderEmail(id: string): Promise<ActionResult<Order>>
         .eq("restaurant_id", RESTAURANT_ID)
         .single(),
     ]);
-    if (!emailsOn(restaurant)) {
-      throw new InputError("Order emails are turned off. Turn them on in Settings first.");
+    if (!faxOn(restaurant)) {
+      throw new InputError("Order faxing is turned off. Turn it on in Settings first.");
     }
-    return deliverOrderEmail(orderFromRow(check<OrderRow>(row, "find the order")), restaurant);
+    const order = orderFromRow(check<OrderRow>(row, "find the order"));
+    return deliverOrderFax({ ...order, delivery: { ...order.delivery, channel: "fax" } }, restaurant);
   });
 }
 
@@ -862,19 +920,32 @@ export async function resendOrderEmail(id: string): Promise<ActionResult<Order>>
 /* Settings (owner)                                                    */
 /* ------------------------------------------------------------------ */
 
-type SettingsInput = Pick<Restaurant, "name" | "phone" | "address" | "hours" | "orderEmail" | "owner">;
+type SettingsInput = Pick<Restaurant, "name" | "phone" | "address" | "hours" | "orderFax" | "owner">;
 
-/** Up to two addresses; at least one while order emails are on. */
-function orderEmailSettings(input: Restaurant["orderEmail"] | undefined): Restaurant["orderEmail"] {
-  const enabled = Boolean(input?.enabled);
-  const raw = Array.isArray(input?.addresses) ? input.addresses : [];
-  const filled = raw.filter((a) => typeof a === "string" && a.trim());
-  if (filled.length > 2) throw new InputError("Orders can go to at most two email addresses");
-  const addresses = [...new Set(filled.map((a) => emailAddress(a, "Order email address").toLowerCase()))];
-  if (enabled && addresses.length === 0) {
-    throw new InputError("Add an email address to send orders to, or turn order emails off");
+/** A fax number as E.164: US numbers can be typed any usual way, others need +. */
+function faxNumber(value: unknown): string {
+  const raw = text(value, "Fax number", 30);
+  const digits = raw.replace(/\D/g, "");
+  if (raw.trim().startsWith("+")) {
+    if (digits.length < 8 || digits.length > 15) throw new InputError(`${raw} isn't a valid fax number`);
+    return `+${digits}`;
   }
-  return { enabled, addresses };
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  throw new InputError(`${raw} isn't a valid fax number. Use 10 digits, like 415 555 0100.`);
+}
+
+/** Up to two fax numbers; at least one while faxing is on. */
+function orderFaxSettings(input: Restaurant["orderFax"] | undefined): Restaurant["orderFax"] {
+  const enabled = Boolean(input?.enabled);
+  const raw = Array.isArray(input?.numbers) ? input.numbers : [];
+  const filled = raw.filter((n) => typeof n === "string" && n.trim());
+  if (filled.length > 2) throw new InputError("Orders can go to at most two fax numbers");
+  const numbers = [...new Set(filled.map(faxNumber))];
+  if (enabled && numbers.length === 0) {
+    throw new InputError("Add a fax number to send orders to, or turn order faxing off");
+  }
+  return { enabled, numbers };
 }
 
 export async function updateRestaurant(input: SettingsInput): Promise<ActionResult<Restaurant>> {
@@ -896,7 +967,7 @@ export async function updateRestaurant(input: SettingsInput): Promise<ActionResu
         summary: text(input.hours?.summary, "Hours", 200),
         buffet: text(input.hours?.buffet, "Buffet hours", 200),
       },
-      orderEmail: orderEmailSettings(input.orderEmail),
+      orderFax: orderFaxSettings(input.orderFax),
       owner: {
         name: text(input.owner?.name, "Owner name", 120),
         email: text(input.owner?.email, "Owner email", 200),
