@@ -92,23 +92,6 @@ export default function OverviewPage() {
           </Link>
         ))}
       </div>
-
-      {/* The pitch, stated plainly */}
-      <div className="mt-9 rounded-sm border border-cream-300 bg-white p-6">
-        <h2 className="font-display text-xl">You can run this yourself</h2>
-        <p className="mt-2 max-w-2xl text-[0.9375rem] leading-relaxed text-ink-500">
-          Change a price, mark tonight&apos;s special sold out, or add a dish. It goes live on your
-          website straight away. No developer, no waiting.
-        </p>
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <Link href="/dashboard/menu" className="btn btn-primary btn-sm">
-            Manage my menu
-          </Link>
-          <Link href="/dashboard/settings" className="btn btn-secondary btn-sm">
-            Restaurant settings
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }
