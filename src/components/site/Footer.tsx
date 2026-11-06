@@ -5,6 +5,7 @@ import { getRestaurant, getSiteText } from "@/lib/db";
 import { fillText } from "@/lib/site-text";
 import { Txt } from "@/components/ui/Txt";
 import { IconArrowRight } from "@/components/ui/icons";
+import { ContyntCredit } from "./ContyntCredit";
 
 export async function Footer() {
   const [restaurant, t] = await Promise.all([getRestaurant(), getSiteText()]);
@@ -118,9 +119,12 @@ export async function Footer() {
           <p>
             © {new Date().getFullYear()} {restaurant.name} {restaurant.tagline}
           </p>
-          <p>
-            {restaurant.address.street}, {restaurant.address.line2}
-          </p>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <p>
+              {restaurant.address.street}, {restaurant.address.line2}
+            </p>
+            <ContyntCredit />
+          </div>
         </div>
       </div>
     </footer>
